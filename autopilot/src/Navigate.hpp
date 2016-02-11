@@ -29,11 +29,17 @@ class Navigate {
 public:
 	int speed;
 	int direction;
+	bool debugMode;
+	bool showObjects;
+	bool showEdges;
+	bool writeVideoVerbose;
 
 	//methods
 public:
 	Navigate();
 	void analyze_frame(cv::Mat frame);
+	void start_video( cv::Size videoSize );
+	void end_video(void );
 	//void analyze_bail(cv::Mat frame);
 
 	//private variables
@@ -44,6 +50,9 @@ private:
 	int p_bailCnt;
 	bool p_bail;
 	bool p_bailToTheRight; //until object on left
+	bool p_writeVideo;
+	cv::VideoWriter p_video;
+	cv::Size p_videoSize;
 
 
 	//private methods

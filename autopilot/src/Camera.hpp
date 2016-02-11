@@ -12,7 +12,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#define CAMERA_USE_FILE "video_output.avi"
+//#define CAMERA_USE_FILE "video_output.avi"
 
 class Camera {
 public:

@@ -24,6 +24,9 @@
 #define KEY_CALIBRATE 'c'
 #define KEY_HELP 'h'
 #define KEY_TEST_FRAME 't'
+#define KEY_SHOW_DEBUG 'd'
+#define KEY_RECORD_VIDEO 'v'
+#define KEY_RECORD_VIDEO_VERBOSE 'z'
 #define KEY_ESCAPE 27
 
 /** Main state machine */
@@ -117,6 +120,21 @@ int main()
     				m_nav.analyze_frame( m_camera.get_frame() );
 					cout << "  Speed:" << m_nav.speed << endl;
 					cout << "  Direc:" << m_nav.direction << endl;
+					break;
+
+				case KEY_SHOW_DEBUG:
+					m_nav.debugMode = !m_nav.debugMode;
+					cout << "Debug mode: " << m_nav.debugMode << endl;
+					break;
+
+				case KEY_RECORD_VIDEO:
+					cout << "starting video" << endl;
+					m_nav.start_video( m_camera.get_frame().size() );
+					break;
+				
+				case KEY_RECORD_VIDEO_VERBOSE:
+					m_nav.writeVideoVerbose = !m_nav.writeVideoVerbose;
+					cout << "starting video verbose" << m_nav.writeVideoVerbose << endl;
 					break;
 
                 case KEY_HELP:
@@ -235,7 +253,9 @@ static void main_auto_drive( void )
 	int bailCnt = 0;
 	while(cv::waitKey(1) != KEY_ESCAPE && !frame.empty() ) {
 		//analyze frame
+		cout << "pre Analyze." << endl;
 		m_nav.analyze_frame(frame);
+		cout << "post Analyze." << endl;
 
 		//update truck
 		m_truck.set_drive( m_nav.speed );

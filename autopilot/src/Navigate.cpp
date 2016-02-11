@@ -18,8 +18,10 @@
 //steering
 #define EXP_FACTOR 0.06
 #define EXP_MULTIPLIER 9.0
-#define STEERING_SENSITIVITY 5.0
-#define OBJ_IN_ROW_MULTIPLIER 3
+//higher is less sensitive
+#define STEERING_SENSITIVITY 9.5
+//#define STEERING_SENSITIVITY 5.0
+#define OBJ_IN_ROW_MULTIPLIER 2
 
 //speed
 #define SPEED_DIST_FROM_CENTER 9
@@ -31,13 +33,16 @@
 #define SPEED_VAL2 10
 #define SPEED_VAL3 9
 #define SPEED_VAL_BAK -18
-//battery level: low=0.6, med=0.8, high=1.0
-#define SPEED_FACTOR 0.7
+//battery level: high=0.6, med=0.8, low=1.0
+#define SPEED_FACTOR 0.72
 
 //bailing
 #define BAIL_DISTANCE_FACTOR_TO_BAIL 0.4
-#define BAIL_PORTION_BEFORE_TURN 0.5
+#define BAIL_PORTION_BEFORE_TURN 0.7
 #define BAIL_CENTER_OFFSET 0.25
+
+#define WRITE_VIDEO_NAME "video_navigate.avi"
+#define VIDEO_RATE 30
 
 using std::cout;
 using std::endl;
@@ -57,6 +62,10 @@ Navigate::Navigate( void )
 	namedWindow("main", CV_WINDOW_KEEPRATIO);
 	cout << "Creating Navigate Object!" << endl;
 	p_bailCnt = 0;
+	debugMode = false;
+	showObjects = false;
+	showEdges = false;
+	p_writeVideo = false;
 }
 
 void Navigate::analyze_frame(cv::Mat frame)
@@ -147,12 +156,22 @@ void Navigate::analyze_forward(cv::Mat frame)
 					p_debugImg.at<Vec3b>(Point(edgeL, y)) = Vec3b(255, 0, 255);
 					edgeL--;
 				}
+					if( writeVideoVerbose && p_writeVideo && 
+							p_debugImg.size() == p_videoSize ) {
+						cout << "'";
+						p_video << p_debugImg;
+					}
 				while (edgeR < (frameEdges.cols - 1) &&
 					frameEdges.at<uchar>(Point(edgeR, y)) == 0 &&
 					frameObstacles.at<uchar>(Point(edgeR, y)) == 0) {
 					p_debugImg.at<Vec3b>(Point(edgeR, y)) = Vec3b(255, 255, 0);
 					edgeR++;
 				}
+					if( writeVideoVerbose && p_writeVideo && 
+							p_debugImg.size() == p_videoSize ) {
+						cout << ".";
+						p_video << p_debugImg;
+					}
 
 				//classify edge types and weight accordingly
 				EDGE_TYPE_T edgeLType = EDGE_TYPE_IMG;
@@ -390,7 +409,15 @@ void Navigate::analyze_forward(cv::Mat frame)
 	putText(p_debugImg, pDrive, Point(10, 30), FONT_HERSHEY_PLAIN, 1, CV_RGB(255, 0, 0), 1);
 
 	//show debug image
-	imshow("main", p_debugImg);
+	if( debugMode )
+		imshow("main", p_debugImg);
+	if( p_writeVideo && p_debugImg.size() == p_videoSize ) {
+		cout << "writing frame to video... " << p_debugImg.size() << endl;
+		p_video << p_debugImg;
+		cout << "frame complete... " << endl;
+	}
+	else if( p_writeVideo && p_debugImg.size() != p_videoSize)
+		cout << "Weird, frame came in differently..." << endl;
 }
 	
 void Navigate::analyze_bail(cv::Mat frame)
@@ -422,7 +449,11 @@ void Navigate::analyze_bail(cv::Mat frame)
 		}
 
 		//debug
-		cvtColor(noBailPortion, p_debugImg, CV_GRAY2RGB);
+		Mat noBailColor;
+		cvtColor(noBailPortion, noBailColor, CV_GRAY2RGB);
+		frame.copyTo( p_debugImg );
+		Mat lowerPortion = p_debugImg(R);
+		noBailColor.copyTo(lowerPortion);
 		//draw steering text on screen
 		std::string pSteering = "Direction: ";
 		pSteering.append(std::to_string(direction));
@@ -433,7 +464,15 @@ void Navigate::analyze_bail(cv::Mat frame)
 		pDrive.append(std::to_string(speed));
 		putText(p_debugImg, pDrive, Point(10, 30), FONT_HERSHEY_PLAIN, 1, CV_RGB(255, 0, 0), 1);
 		
-		imshow("main", p_debugImg);
+		if( debugMode )
+			imshow("main", p_debugImg);
+
+		if( p_writeVideo && p_debugImg.size() == p_videoSize ) {
+			cout << "writing frame to video..." << endl;
+			p_video << p_debugImg;
+		}
+		else if( p_writeVideo && p_debugImg.size() != p_videoSize)
+			cout << "Weird, frame came in differently..." << endl;
 	}
 	break;
 
@@ -471,14 +510,14 @@ void Navigate::analyze_bail(cv::Mat frame)
 					int edgeL = center;
 					int edgeR = center;
 					while (edgeL > 0 &&
-						frameEdges.at<uchar>(Point(edgeL, y)) == 0 &&
-						frameObstacles.at<uchar>(Point(edgeL, y)) == 0) {
+							frameEdges.at<uchar>(Point(edgeL, y)) == 0 &&
+							frameObstacles.at<uchar>(Point(edgeL, y)) == 0) {
 						p_debugImg.at<Vec3b>(Point(edgeL, y)) = Vec3b(255, 0, 255);
 						edgeL--;
 					}
 					while (edgeR < (frameEdges.cols - 1) &&
-						frameEdges.at<uchar>(Point(edgeR, y)) == 0 &&
-						frameObstacles.at<uchar>(Point(edgeR, y)) == 0) {
+							frameEdges.at<uchar>(Point(edgeR, y)) == 0 &&
+							frameObstacles.at<uchar>(Point(edgeR, y)) == 0) {
 						p_debugImg.at<Vec3b>(Point(edgeR, y)) = Vec3b(255, 255, 0);
 						edgeR++;
 					}
@@ -503,7 +542,7 @@ void Navigate::analyze_bail(cv::Mat frame)
 							//check if we turned enough
 							int distFromCenterL = center - edgeL;
 							if (edgeLType == EDGE_TYPE_OBJECT &&
-								distFromCenterL > centerOffset) {
+									distFromCenterL > centerOffset) {
 								//turned enough, don't bail
 								p_bail = false;
 							}
@@ -513,7 +552,7 @@ void Navigate::analyze_bail(cv::Mat frame)
 							//check if we turned enough
 							int distFromCenterR = edgeR - center;
 							if (edgeRType == EDGE_TYPE_OBJECT &&
-								distFromCenterR > centerOffset) {
+									distFromCenterR > centerOffset) {
 								//turned enough, don't bail
 								p_bail = false;
 							}
@@ -548,7 +587,14 @@ void Navigate::analyze_bail(cv::Mat frame)
 		putText(p_debugImg, pDrive, Point(10, 30), FONT_HERSHEY_PLAIN, 1, CV_RGB(255, 0, 0), 1);
 
 		//show debug image
-		imshow("main", p_debugImg);
+		if( debugMode )
+			imshow("main", p_debugImg);
+		if( p_writeVideo && p_debugImg.size() == p_videoSize ) {
+			cout << "writing frame to video..." << endl;
+			p_video << p_debugImg;
+		}
+		else if( p_writeVideo && p_debugImg.size() != p_videoSize)
+			cout << "Weird, frame came in differently..." << endl;
 	}
 	break;
 	}
@@ -579,7 +625,8 @@ void Navigate::get_obstacles(cv::Mat hsvImg, cv::Mat *frameObstacles)
 	int valMin = 60;
 	int valMax = 255;
 	inRange(hsvImg, Scalar(hueMin, satMin, valMin), Scalar(hueMax, 255, valMax), *frameObstacles);
-	//imshow( "obstacles", frameObstacles );
+	if( showObjects )
+		imshow( "obstacles", *frameObstacles );
 }
 
 void Navigate::get_edges(cv::Mat hsvImg, cv::Mat *frameEdges)
@@ -592,5 +639,22 @@ void Navigate::get_edges(cv::Mat hsvImg, cv::Mat *frameEdges)
 	int valMin = 50;
 	int valMax = 255;
 	inRange(hsvImg, Scalar(hueMin, satMin, valMin), Scalar(hueMax, 255, valMax), *frameEdges);
-	//imshow( "edges", frameEdges );
+	if( showEdges )
+		imshow( "edges", *frameEdges );
+}
+
+void Navigate::start_video( cv::Size videoSize )
+{
+	p_writeVideo = true;
+	p_video.open(	WRITE_VIDEO_NAME, 
+			VideoWriter::fourcc('M', 'J', 'P', 'G'), 
+			VIDEO_RATE, 
+			videoSize, 
+			true);
+	p_videoSize = cv::Size(videoSize);
+}
+
+void Navigate::end_video()
+{
+	p_writeVideo = false;
 }
