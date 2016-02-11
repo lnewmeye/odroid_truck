@@ -35,8 +35,8 @@ int main( int argc, char **argv)
 		return -1;
 	}
 	//set resolution
-	//camera.set(CV_CAP_PROP_FRAME_WIDTH, 160 );
-	//camera.set(CV_CAP_PROP_FRAME_HEIGHT, 90 );
+	camera.set(CV_CAP_PROP_FRAME_WIDTH, 160 );
+	camera.set(CV_CAP_PROP_FRAME_HEIGHT, 90 );
 
 	//camera.set(CV_CAP_PROP_FRAME_WIDTH, 320 );
 	//camera.set(CV_CAP_PROP_FRAME_HEIGHT, 240 );
@@ -44,8 +44,8 @@ int main( int argc, char **argv)
 	//camera.set(CV_CAP_PROP_FRAME_WIDTH, 640 );
 	//camera.set(CV_CAP_PROP_FRAME_HEIGHT, 480 );
 
-	camera.set(CV_CAP_PROP_FRAME_WIDTH, 1920 );
-	camera.set(CV_CAP_PROP_FRAME_HEIGHT, 1080 );
+	//camera.set(CV_CAP_PROP_FRAME_WIDTH, 1920 );
+	//camera.set(CV_CAP_PROP_FRAME_HEIGHT, 1080 );
 
 	//create video writer
 	cout << "Opening video file..." << endl;
