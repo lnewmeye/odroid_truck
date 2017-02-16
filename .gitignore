@@ -1,0 +1,5 @@
+# .gitignore for Odroid Truck Project
+
+*~
+*.swp
+autopilot/odroid_truck
