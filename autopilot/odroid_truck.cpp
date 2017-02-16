@@ -7,8 +7,8 @@
 using std::cout;
 using std::endl;
 
-//#define SERIAL_PORT "/dev/ttyACM0"
-#define SERIAL_PORT "test.txt"
+#define SERIAL_PORT "/dev/ttyACM0"
+//#define SERIAL_PORT "test.txt"
 
 int main()
 {

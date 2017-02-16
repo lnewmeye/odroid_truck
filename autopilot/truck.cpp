@@ -16,10 +16,10 @@ int Truck::connect_truck(string serialName)
 #endif
 	
 	// Open serial connection
-	truckSerial.open(serialName);
-	
+	truckSerial = open(serialName.c_str(), O_RDWR | O_NONBLOCK);
+
 	// Check if connection open, error if not
-	if(!truckSerial.is_open()) {
+	if(truckSerial < 0) {
 		cout << "Error: Failed to open serial connection" << endl;
 		return -1;
 	}
@@ -28,10 +28,27 @@ int Truck::connect_truck(string serialName)
 		cout << "Opened serial port" << endl;
 	}
 #endif
+	
+	// Setup struct for serial connection
+	memset(&serialTermios, 0, sizeof(serialTermios));
+	serialTermios.c_iflag = 0;
+	serialTermios.c_oflag = 0;
+	serialTermios.c_cflag = 0;
+	serialTermios.c_lflag = 0;
+	serialTermios.c_cc[VMIN] = 1;
+	serialTermios.c_cc[VTIME] = 5;
+	cfsetospeed(&serialTermios, B115200);
+	cfsetispeed(&serialTermios, B115200);
+	
+	// Set serial attributes
+	tcsetattr(truckSerial, TCSANOW, &serialTermios);
 
+	// Wait for Arduino reset
+	usleep(100000);
+	
 	// Initialize connection
-	//truckSerial << 'i';
-	truckSerial.put('i');
+	char init = 'i';
+	write(truckSerial, &init, sizeof(char));
 
 #ifdef DEBUG
 	cout << "Write 'i'" << endl;
@@ -39,8 +56,9 @@ int Truck::connect_truck(string serialName)
 	
 	// Check connection
 	char acknowledge;
-	acknowledge = truckSerial.get();
-	cout << "Acknowledge: " << std::hex << acknowledge << endl;
+	read(truckSerial, &acknowledge, sizeof(char));
+	printf("Acknowledge: %X\n", acknowledge);
+	//cout << "Acknowledge: " << std::hex << acknowledge << endl;
 	
 	// Exit with success
 	return 0;
@@ -61,9 +79,9 @@ void Truck::set_steering(char steering_angle)
 void Truck::write_serial(char location, char value)
 {
 	// Write location and value to truck
-	truckSerial << location << value << value;
+	//truckSerial << location << value << value;
 	
 	// Read back acknowedge
-	value = truckSerial.get();
+	//value = truckSerial.get();
 	cout << "Acknowledge: " << std::hex << value << " at " << location << endl;
 }

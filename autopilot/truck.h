@@ -5,8 +5,12 @@
 
 // For debug purposes
 #include <iostream>
-#include <fstream>
 #include <string>
+#include <termios.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #define DEBUG
 
@@ -17,7 +21,8 @@ class Truck {
 		void set_steering(char steering_angle);
 	private:
 		void write_serial(char location, char value);
-		std::fstream truckSerial;
+		int truckSerial;
 		char drive_speed;
 		char steering_angle;
+		struct termios serialTermios;
 };
