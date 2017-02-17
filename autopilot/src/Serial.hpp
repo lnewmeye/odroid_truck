@@ -7,12 +7,15 @@
 /****************************** Include Files ******************************/
 
 //#define SERIAL_USE_FILE "serial.txt"
+#define SERIAL_ACK 0x06
+#define SERIAL_NAK 0x15
 
 class Serial {
 	public:
 		Serial();
 		bool open();
 		bool hitc();
+		int bytes_available();
 		char getc();
 		int read( char *data, int size);
 		void putc( char c);

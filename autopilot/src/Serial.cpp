@@ -11,10 +11,12 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 /****************************** Definitions ********************************/
 
-#define SERIAL_PORT "/dev/ttyUSB0"
+//#define SERIAL_PORT "/dev/ttyUSB0"
+#define SERIAL_PORT "/dev/ttyACM0"
 #define MICROSEC_PER_BYTE 87
 
 using std::cout;
@@ -47,9 +49,22 @@ bool Serial::open( void )
 
 bool Serial::hitc( void ) 
 {
+	int bytesAvail;
 #ifdef SERIAL_USE_FILE
 #else
+	ioctl( p_fd, FIONREAD, &bytesAvail );
 #endif
+	return ( bytesAvail > 0 );
+}
+
+int Serial::bytes_available( void ) 
+{
+	int bytesAvail;
+#ifdef SERIAL_USE_FILE
+#else
+	ioctl( p_fd, FIONREAD, &bytesAvail );
+#endif
+	return bytesAvail;
 }
 
 char Serial::getc( void ) 
@@ -122,7 +137,7 @@ int Serial::set_interface_attribs (int fd, int speed, int parity)
 
     // enable reading
     tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-    tty.c_cflag &= ~HUPCL;              // don't reset on close
+    //tty.c_cflag &= ~HUPCL;              // don't reset on close
     tty.c_cflag |= (CLOCAL | CREAD);    // ignore modem controls,
     tty.c_cflag &= ~(PARENB | PARODD);  // shut off parity
     tty.c_cflag |= parity;              // parity enable
