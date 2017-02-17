@@ -1,7 +1,15 @@
 // Truck class for Odroid Truck Project
 // Authors: James Swift, Luke Newmeyer
 
-#include "truck.h"
+#include "Truck.hpp"
+
+#include <string>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+
+#define TRUCK_TIMEOUT 50000000L
 
 using std::cout;
 using std::endl;
@@ -9,17 +17,13 @@ using std::ofstream;
 using std::ifstream;
 using std::string;
 
-int Truck::connect_truck(string serialName)
+int Truck::connect_truck( void )
 {
 #ifdef DEBUG
 	cout << "Opening Truck" << endl;
 #endif
-	
-	// Open serial connection
-	truckSerial = open(serialName.c_str(), O_RDWR | O_NONBLOCK);
 
-	// Check if connection open, error if not
-	if(truckSerial < 0) {
+	if( p_serial.open() != 0 ) {
 		cout << "Error: Failed to open serial connection" << endl;
 		return -1;
 	}
@@ -28,60 +32,126 @@ int Truck::connect_truck(string serialName)
 		cout << "Opened serial port" << endl;
 	}
 #endif
-	
-	// Setup struct for serial connection
-	memset(&serialTermios, 0, sizeof(serialTermios));
-	serialTermios.c_iflag = 0;
-	serialTermios.c_oflag = 0;
-	serialTermios.c_cflag = 0;
-	serialTermios.c_lflag = 0;
-	serialTermios.c_cc[VMIN] = 1;
-	serialTermios.c_cc[VTIME] = 5;
-	cfsetospeed(&serialTermios, B115200);
-	cfsetispeed(&serialTermios, B115200);
-	
-	// Set serial attributes
-	tcsetattr(truckSerial, TCSANOW, &serialTermios);
-
-	// Wait for Arduino reset
-	usleep(100000);
-	
-	// Initialize connection
-	char init = 'i';
-	write(truckSerial, &init, sizeof(char));
 
 #ifdef DEBUG
 	cout << "Write 'i'" << endl;
 #endif
+
+	//wait for initialization flag
+	wait_for_resp( 11 );
+
+	//read bytes
+	while( p_serial.hitc() ) {
+#ifdef DEBUG
+		printf("Reading: %c\n", p_serial.getc() );
+#endif
+	}
 	
-	// Check connection
-	char acknowledge;
-	read(truckSerial, &acknowledge, sizeof(char));
-	printf("Acknowledge: %X\n", acknowledge);
-	//cout << "Acknowledge: " << std::hex << acknowledge << endl;
-	
+	// Initialize connection
+	char init = 'i';
+	p_serial.putc( 'i' );
+
+	//wait for response
+	wait_for_resp( 6 );
+
+	//read bytes
+	while( p_serial.hitc() ) {
+#ifdef DEBUG
+		printf("Reading: %c\n", p_serial.getc() );
+#endif
+	}
+
+#ifdef DEBUG
+	//test steering
+	set_steering( 100 );
+	sleep(1);
+	set_steering( 0 );
+
+	//test drive	
+	//set_drive( 1 );
+	//sleep(1);
+	//set_drive( -1 );
+	//sleep(1);
+	//set_drive( 0 );
+#endif
+
 	// Exit with success
 	return 0;
 }
 
 void Truck::set_drive(char drive_speed)
 {
-	this->drive_speed = drive_speed;
-	
+	int tries;
+	for( tries = 0; tries < 3; tries++ ) {
+		//send sterring command
+		p_serial.putc( 'd' );
+		p_serial.putc( drive_speed );
+		p_serial.putc( drive_speed );
+
+		//check for ack
+		wait_for_resp(1);
+		if( p_serial.getc() == SERIAL_ACK ) {
+			break;
+		} else {
+			//crap, reset truck
+			reset_truck();
+		}
+	}
+
+	if( tries == 3 ) {
+		cout << "Truck Error: Couldn't set steering!\n";
+	}
+
 }
 
 void Truck::set_steering(char steering_angle)
 {
-	this->steering_angle = steering_angle;
+	int tries;
+	for( tries = 0; tries < 3; tries++ ) {
+		//send sterring command
+		p_serial.putc( 's' );
+		p_serial.putc( steering_angle );
+		p_serial.putc( steering_angle );
+
+		//check for ack
+		wait_for_resp(1);
+		if( p_serial.getc() == SERIAL_ACK ) {
+			break;
+		} else {
+			//crap, reset truck
+			reset_truck();
+		}
+	}
+
+	if( tries == 3 ) {
+		cout << "Truck Error: Couldn't set steering!\n";
+	}
 }
 
-
-void Truck::write_serial(char location, char value)
+void Truck::wait_for_resp( int minBytes )
 {
-	// Write location and value to truck
-	//truckSerial << location << value << value;
-	
-	// Read back acknowedge
-	//value = truckSerial.get();
-	cout << "Acknowledge: " << std::hex << value << " at " << location << endl;
+	long timeout = 0;
+	while( p_serial.bytes_available() < minBytes &&
+			timeout < TRUCK_TIMEOUT ) {
+		timeout++;
+	}
+
+	return;
+}
+
+void Truck::reset_truck( void )
+{
+	//send command to reset a few times to work state machine
+	p_serial.putc( 'r' );
+	p_serial.putc( 'r' );
+	p_serial.putc( 'r' );
+
+	//wait for response
+	wait_for_resp( 6 );
+	//flush buffer
+	while( p_serial.hitc() ) p_serial.getc();
+	//ensure no more is comming
+	wait_for_resp( 6 );
+	//flush anything that came in
+	while( p_serial.hitc() ) p_serial.getc();
 }
