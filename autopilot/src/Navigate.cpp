@@ -20,14 +20,22 @@ using namespace cv;
 
 string type2str(int type);
 
+typedef enum DIR {
+	RIGHT = 0,
+	UP,
+	LEFT,
+	DOWN
+} DIR_T;
+
 /*************************** Implementation **********************************/
 
 Navigate::Navigate( void )
 {
 #ifdef NAVIGATE_USE_LUKE
 #else
-	namedWindow("debugE", CV_WINDOW_KEEPRATIO);
-	namedWindow("debugO", CV_WINDOW_KEEPRATIO);
+	//namedWindow("debugE", CV_WINDOW_KEEPRATIO);
+	//namedWindow("debugO", CV_WINDOW_KEEPRATIO);
+	namedWindow("main", CV_WINDOW_KEEPRATIO);
 #endif
 }
 
@@ -55,143 +63,106 @@ void Navigate::analyze_frame_james(cv::Mat frame)
 	cv::Mat colors;
 	cvtColor(frame, colors, CV_RGB2HSV);
 
+	//get obstacles in image (orange)
 	int satMin = 175;
 	int hueCenter = 116; //lower is more orange
 	int hueMin = hueCenter - 8;
 	int hueMax = hueCenter + 8;
 	Mat frameObstacles;
 	inRange(colors, Scalar(hueMin, satMin, 40), Scalar(hueMax, 255, 255), frameObstacles);
-
+	//get course edges (blue)
 	satMin = 80;
 	hueCenter = 18;
 	hueMin = hueCenter - 15;
 	hueMax = hueCenter + 15;
 	Mat frameEdges;
 	inRange(colors, Scalar(hueMin, satMin, 50), Scalar(hueMax, 255, 255), frameEdges);
+	//blend the two together
+	Mat combined;
+	cv::bitwise_not(frameEdges | frameObstacles, combined);
 
-	//lets just start with following a basic path (edges only)
-	int midWay = (frameEdges.cols / 2) - 1;
-	int lMax, rMax; //pixels closest to center
-	int nextPoint;
-	int prevPoint = midWay;
-	int pMin = frameEdges.cols / 10;
-	int pMax = (9 * frameEdges.cols) / 10;
-	bool obstacleFound = false;
-	int oSum;
-	int oSlopex = (frameEdges.cols * 11) / 20;
-	int oSlopey = frameEdges.rows;
-	int oOffset = (frameEdges.cols * 1) / 5;
+	//create debug img
+	cv::cvtColor(combined, p_debugImg, CV_GRAY2BGR);
 
-	//create a debug image
-	Mat debugEImg;
-	cvtColor(frameEdges, debugEImg, CV_GRAY2BGR);
-	Mat debugOImg;
-	cvtColor(frameObstacles, debugOImg, CV_GRAY2BGR);
-
-	//from bottom to top (closest = highest priority)
-	for (int y = frameEdges.rows-1; y >= 0; y--) {
-		oSum = 0;
-		lMax = 0;
-		rMax = frameEdges.cols - 1;
-		for (int x = 0; x < frameEdges.cols - 1; x++) {
-			//get pixel values
-			unsigned char ePix = frameEdges.at<unsigned char>(Point(x, y));
-			unsigned char oPix = frameObstacles.at<unsigned char>(Point(x, y));
-
-			//get boarder boundaries
-			if (ePix > 0) {
-				//check if we need to update closest pixel to previous location
-				if (x < prevPoint && lMax < x ) 
-					lMax = x;
-				else if( x > prevPoint && rMax > x ) 
-					rMax = x;
+	//scan drive path for obstacles. Report first obstacle found.
+	int xEnd = combined.cols - 1;
+	int yEnd = 0;
+	int minDist;
+	int xStart;
+	for (int y = combined.rows - 1; y >= yEnd; y--) {
+		//only scan drive path, ignore rest
+		minDist = get_min_dist(y); //get drive path width
+		xStart = (combined.cols / 2) - (minDist/2); 
+		//scan drive path for objects
+		for (int x = xStart; x < (xStart + minDist); x++) {
+			//check for object
+			if (combined.at<uchar>(Point(x, y)) == 0) {
+				xEnd = x;
+				yEnd = y;
+				break;
 			}
-
-			//find which side has more obstacles
-			if (oPix > 0) {
-				//check if on left
-				if (x < prevPoint )
-					oSum++; //record we want to go right (positive)
-				else if (x > prevPoint )
-					oSum--;
+			else {
+				p_debugImg.at<Vec3b>(Point(x, y)) = Vec3b(255, 0, 255);
 			}
 		}
-
-		//check where mid-point is
-		prevPoint = (lMax + rMax) / 2;
-		int oPoint = prevPoint;
-
-		//check if we should go left or right based on the obstacles
-		if (oSum != 0) {
-			int width = ((y * oSlopex) / oSlopey) + oOffset; //width of car at this point
-			int testX = prevPoint;
-			bool foundGap = false;
-			while (!foundGap) {
-				//get start position
-				int startX = testX - (width / 2);
-
-				//check if window is all clear
-				foundGap = true;
-				for (int i = 0; i < width; i++) {
-					int pLoc = startX + i;
-					if (pLoc > 0 && pLoc < frameObstacles.cols) {
-						//debugOImg.at<Vec3b>(Point(pLoc, y)) = Vec3b(0, 0, 255);
-						unsigned char pixel = frameObstacles.at<unsigned char>(Point(pLoc, y));
-						if (pixel > 0) {
-							foundGap = false;
-							break;
-						}
-					}
-					else
-						break;
-				}
-				if (foundGap == false) {
-					if (oSum > 0)
-						testX++;
-					else
-						testX--;
-				}
-			}
-			if (testX < 0)
-				oPoint = 0;
-			else if (testX > frameObstacles.cols - 1)
-				oPoint = frameObstacles.cols - 1;
-			else
-				oPoint = testX;
-		}
-
-		//mid-point
-		int midPoint = (prevPoint + oPoint) / 2;
-
-		//record l and r max values
-		lEdge.push_back(lMax);
-		rEdge.push_back(rMax);
-		mEdge.push_back(prevPoint);
-		obj.push_back(oPoint);
-		compromoise.push_back(midPoint);
-
-		//color this pixel red
-		debugEImg.at<Vec3b>(Point(lMax,y)) = Vec3b(255, 0, 0);
-		debugEImg.at<Vec3b>(Point(rMax,y)) = Vec3b(255, 0, 0);
-		debugEImg.at<Vec3b>(Point(prevPoint,y)) = Vec3b(0, 255, 0);
-		debugEImg.at<Vec3b>(Point(oPoint,y)) = Vec3b(0, 0, 255);
-		debugEImg.at<Vec3b>(Point(midPoint,y)) = Vec3b(0, 255, 255);
-
-		debugOImg.at<Vec3b>(Point(lMax,y)) = Vec3b(255, 0, 0);
-		debugOImg.at<Vec3b>(Point(rMax,y)) = Vec3b(255, 0, 0);
-		debugOImg.at<Vec3b>(Point(prevPoint,y)) = Vec3b(0, 255, 0);
-		debugOImg.at<Vec3b>(Point(oPoint,y)) = Vec3b(0, 0, 255);
-		debugOImg.at<Vec3b>(Point(midPoint,y)) = Vec3b(0, 255, 255);
 	}
 
-	//determine direction
+	//DEBUG variables
+	Point mid= Point(combined.cols / 2, yEnd);
+	Point end;
+	Scalar color;
 
-	//show image
-	imshow("debugE", debugEImg);
-	imshow("debugO", debugOImg);
-	waitKey(1);
+	//check where we're at
+	int backupY = combined.rows - NAVIGATE_BACKUP_ROW;
+	int leftY = combined.rows - NAVIGATE_LEFT_ROW;
+
+	//update speed and direction
+	if (yEnd > backupY ) {
+		//if its not critical, lets just go left (on far right side)
+		if (yEnd < (combined.rows - ((NAVIGATE_BACKUP_ROW / 2)) ) &&
+			xEnd >= (xStart + ((minDist * 9) / 10))) {
+			direction = -NAVIGATE_MAX_DIRECTION;
+			speed = NAVIGATE_MAX_SPEED/10;
+		}
+		else {
+			//we're going backwards, we will always go right when going backwards
+			direction = NAVIGATE_MAX_DIRECTION;
+			speed = -(NAVIGATE_MAX_SPEED / 10);
+			//mid = Point(0, yEnd);
+		}
+		color = Scalar(0, 0, 255);
+	}
+	else if (yEnd > leftY ) {
+		direction = (-NAVIGATE_MAX_DIRECTION * (yEnd - leftY) / (backupY - leftY));
+		speed = NAVIGATE_MAX_SPEED/5;
+		color = Scalar(0, 255, 0);
+	}
+	else {
+		direction = (NAVIGATE_MAX_DIRECTION * (leftY - yEnd) / leftY);
+		speed = NAVIGATE_MAX_SPEED/2;
+		//if object was found on right side, don't turn hard
+		if (xEnd > ((combined.cols / 2)-4) )
+			direction /= 3;
+
+		//we're going fast, cap max direction
+		if (direction > (NAVIGATE_MAX_DIRECTION / 4))
+			direction = (NAVIGATE_MAX_DIRECTION / 4);
+
+		//we're going fast, cap the max direction
+		color = Scalar(255, 0, 0);
+	}
+
+	//draw line (scale max dirVal to helf-width of image)
+	int scaledVal = ((direction * 79) / NAVIGATE_MAX_DIRECTION);
+	cout << "dirVal: " << direction << " scaled: " << scaledVal << endl;
+	cout << "speedVal: " << speed << endl;
+	end = Point((combined.cols/2) + scaledVal, yEnd);
+	line(p_debugImg, mid, end, color, 1, 8, 0);
+	
+	//go up image
+	imshow("main", p_debugImg);
 }
-
+	
 void Navigate::analyze_frame_luke(cv::Mat frame)
 {
 }
@@ -217,4 +188,20 @@ string type2str(int type) {
 	r += (chans + '0');
 
 	return r;
+}
+
+//Wheel base:	1/6 width from edge of frame at bottom (1/8)
+//				1/6 width of frame at top of frame (1/5)
+// 3/4 image width at bottom
+// 1/5 image width at top
+// image 160x90
+int Navigate::get_min_dist(int y)
+{
+	int topW = (160 / 6);
+	int botW = ((160 * 3) / 4) - 20;
+	int diff = botW - topW;
+
+	int dist = ((( y * diff ) / 90) + topW);
+
+	return (dist);
 }
