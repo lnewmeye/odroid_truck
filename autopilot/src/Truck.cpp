@@ -1,13 +1,20 @@
-// Truck class for Odroid Truck Project
-// Authors: James Swift, Luke Newmeyer
+/******************************************************************************
+ * Class Implementation
+ *
+ * Authors: James Swift, Luke Newmeyer
+ * Copyright 2017
+ *****************************************************************************/
+/*************************** Include Files ***********************************/
 
 #include "Truck.hpp"
 
 #include <string>
 #include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include <stdio.h>
+
+/*************************** Definitions *************************************/
 
 #define TRUCK_TIMEOUT 50000000L
 
@@ -16,6 +23,8 @@ using std::endl;
 using std::ofstream;
 using std::ifstream;
 using std::string;
+
+/*************************** Implementation **********************************/
 
 int Truck::connect_truck( void )
 {
@@ -64,7 +73,7 @@ int Truck::connect_truck( void )
 #ifdef DEBUG
 	//test steering
 	set_steering( 100 );
-	sleep(1);
+	//sleep(1);
 	set_steering( 0 );
 
 	//test drive	

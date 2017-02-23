@@ -1,12 +1,16 @@
-/****************************************************************************
+/******************************************************************************
  * Serial Class - This may source directly from a serial port or from a file
  * 		  depending if the SERIAL_USE_FILE definition is set.
- ****************************************************************************/
+ *
+ * Authors: James Swift, Luke Newmeyer
+ * Copyright 2017
+ *****************************************************************************/
 #pragma once
 
-/****************************** Include Files ******************************/
+/****************************** Include Files ********************************/
 
 //#define SERIAL_USE_FILE "serial.txt"
+
 #define SERIAL_ACK 0x06
 #define SERIAL_NAK 0x15
 
@@ -19,7 +23,6 @@ class Serial {
 		char getc();
 		int read( char *data, int size);
 		void putc( char c);
-		void write( char c);
 		void write( char *data, int size);
 	private:
 		int p_fd;

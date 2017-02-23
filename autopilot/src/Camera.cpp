@@ -1,14 +1,17 @@
-/****************************************************************************
- * Video capture Implementation
- ****************************************************************************/
-/****************************** Include Files ******************************/
+/*****************************************************************************
+ * Class Implementation
+ *
+ * Authors: James Swift, Luke Newmeyer
+ * Copyright 2017
+ *****************************************************************************/
+/****************************** Include Files ********************************/
 
 #include <iostream>
 #include "Camera.hpp"
 
-/****************************** Definitions ********************************/
+/****************************** Definitions **********************************/
 
-/****************************** Implementation *****************************/
+/****************************** Implementation *******************************/
 
 Camera::Camera( void )
 {
@@ -20,8 +23,10 @@ void Camera::open( void )
 #ifdef CAMERA_USE_FILE
 	//cv::String filename(CAMERA_USE_FILE);
 	p_vCap.open(CAMERA_USE_FILE);
+	//fast forward
+	for (int i = 0; i < 4500; i++) { cv::Mat frame; p_vCap >> frame; }
 #else
-	p_vCap(0);
+	p_vCap.open(0);
 #endif
 	if( p_vCap.isOpened() ) {
 		p_opened = true;
