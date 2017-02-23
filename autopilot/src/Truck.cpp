@@ -99,12 +99,17 @@ void Truck::set_drive(char drive_speed)
 
 		//check for ack
 		wait_for_resp(1);
+#ifndef SERIAL_USE_FILE
 		if( p_serial.getc() == SERIAL_ACK ) {
+#else
+		if( 1 ) {
+#endif
 			break;
 		} else {
 			//crap, reset truck
 			reset_truck();
 		}
+		break;
 	}
 
 	if( tries == 3 ) {
@@ -124,7 +129,11 @@ void Truck::set_steering(char steering_angle)
 
 		//check for ack
 		wait_for_resp(1);
+#ifndef SERIAL_USE_FILE
 		if( p_serial.getc() == SERIAL_ACK ) {
+#else
+		if( 1 ) {
+#endif
 			break;
 		} else {
 			//crap, reset truck
@@ -139,6 +148,7 @@ void Truck::set_steering(char steering_angle)
 
 void Truck::wait_for_resp( int minBytes )
 {
+#ifndef SERIAL_USE_FILE
 	long timeout = 0;
 	while( p_serial.bytes_available() < minBytes &&
 			timeout < TRUCK_TIMEOUT ) {
@@ -146,10 +156,12 @@ void Truck::wait_for_resp( int minBytes )
 	}
 
 	return;
+#endif
 }
 
 void Truck::reset_truck( void )
 {
+#ifndef SERIAL_USE_FILE
 	//send command to reset a few times to work state machine
 	p_serial.putc( 'r' );
 	p_serial.putc( 'r' );
@@ -163,4 +175,5 @@ void Truck::reset_truck( void )
 	wait_for_resp( 6 );
 	//flush anything that came in
 	while( p_serial.hitc() ) p_serial.getc();
+#endif
 }

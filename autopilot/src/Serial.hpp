@@ -9,7 +9,7 @@
 
 /****************************** Include Files ********************************/
 
-//#define SERIAL_USE_FILE "serial.txt"
+#define SERIAL_USE_FILE "serial.txt"
 
 #define SERIAL_ACK 0x06
 #define SERIAL_NAK 0x15
