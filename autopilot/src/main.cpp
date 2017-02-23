@@ -23,6 +23,7 @@
 #define KEY_MANUAL 'm'
 #define KEY_CALIBRATE 'c'
 #define KEY_HELP 'h'
+#define KEY_TEST_FRAME 't'
 #define KEY_ESCAPE 27
 
 /** Main state machine */
@@ -39,6 +40,8 @@ using std::cin;
 using std::endl;
     
 static Camera m_camera;
+static Navigate m_nav;
+static Truck m_truck;
 
 /****************************** Private Functions **************************/
 
@@ -85,6 +88,9 @@ int main()
                     break;
 
                 case KEY_STOP:
+					cout << "Stopping truck" << endl;
+					m_truck.set_drive(0);
+					m_truck.set_steering(0);
 					cout << "Entering Idle state." << endl;
                     state = MAIN_STATE_IDLE;
                     break;
@@ -93,6 +99,13 @@ int main()
 					cout << "Entering Auto Drive state." << endl;
                     state = MAIN_STATE_AUTO_DRIVE;
                     break;
+
+				case KEY_TEST_FRAME:
+					cout << "Testing frame." << endl;
+					main_auto_drive();
+					cout << "  Speed:" << m_nav.speed << endl;
+					cout << "  Direc:" << m_nav.direction << endl;
+					break;
 
                 case KEY_HELP:
                     main_print_usage();
@@ -172,15 +185,12 @@ static void main_manual_drive( void )
 
 static void main_auto_drive( void )
 {
-    static Navigate nav;
-    static Truck truck;
-
     //analyze camera frame
-    nav.analyze_frame( m_camera.get_frame() );
+    m_nav.analyze_frame( m_camera.get_frame() );
 
     //update truck
-    //truck.set_drive( nav.speed );
-    //truck.set_steering( nav.direction );
+    m_truck.set_drive( m_nav.speed );
+    m_truck.set_steering( m_nav.direction );
 }
 
 static void main_calibrate_drive( void )
