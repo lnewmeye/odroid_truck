@@ -91,6 +91,11 @@ int Truck::connect_truck( void )
 void Truck::set_drive(char drive_speed)
 {
 	int tries;
+	
+	//truck accepts 0 to 200 with 100 being center
+	//this function accepts -100 to 100 (offset)
+	drive_speed += 100; 
+
 	for( tries = 0; tries < 3; tries++ ) {
 		//send sterring command
 		p_serial.putc( 'd' );
@@ -121,6 +126,12 @@ void Truck::set_drive(char drive_speed)
 void Truck::set_steering(char steering_angle)
 {
 	int tries;
+
+	//truck accepts 0 to 200 with 100 being center
+	//this function accepts -100 to 100 (offset)
+	steering_angle += 100; 
+
+	//try 3 times
 	for( tries = 0; tries < 3; tries++ ) {
 		//send sterring command
 		p_serial.putc( 's' );

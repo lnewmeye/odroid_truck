@@ -68,15 +68,19 @@ void Navigate::analyze_frame_james(cv::Mat frame)
 	int hueCenter = 116; //lower is more orange
 	int hueMin = hueCenter - 8;
 	int hueMax = hueCenter + 8;
+	int valMin = 40;
+	int valMax = 255;
 	Mat frameObstacles;
-	inRange(colors, Scalar(hueMin, satMin, 40), Scalar(hueMax, 255, 255), frameObstacles);
+	inRange(colors, Scalar(hueMin, satMin, valMin), Scalar(hueMax, 255, valMax), frameObstacles);
 	//get course edges (blue)
-	satMin = 80;
+	satMin = 100;
 	hueCenter = 18;
-	hueMin = hueCenter - 15;
-	hueMax = hueCenter + 15;
+	hueMin = hueCenter - 14;
+	hueMax = hueCenter + 14;
+	valMin = 50;
+	valMax = 255;
 	Mat frameEdges;
-	inRange(colors, Scalar(hueMin, satMin, 50), Scalar(hueMax, 255, 255), frameEdges);
+	inRange(colors, Scalar(hueMin, satMin, valMin), Scalar(hueMax, 255, valMax), frameEdges);
 	//blend the two together
 	Mat combined;
 	cv::bitwise_not(frameEdges | frameObstacles, combined);

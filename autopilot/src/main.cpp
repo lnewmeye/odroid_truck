@@ -37,6 +37,7 @@ typedef enum MAIN_STATE_E {
 
 using std::cout;
 using std::cin;
+using std::cin;
 using std::endl;
     
 static Camera m_camera;
@@ -66,13 +67,20 @@ int main()
     //open camera
     m_camera.open();
 
-	//open a window (we can't get key presses without a window open)
-	cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
+    //connect to the truck
+    m_truck.connect_truck();
 
     //main loop (close main loop if main window closes, feel free to change)
-    while(cvGetWindowHandle("main") != 0) {
+    while(1) {
         //get key press and change state
-        char c = cv::waitKey(1);
+        main_print_usage();
+
+		//so apparently this doesnt' work while using ssh. Windows/putty thing?
+		//So I'll use the blocking method instead. Bummer.
+        //char c = cv::waitKey(1);
+		char c;
+		cin >> c;
+
         //check if key was pressed
         if( c >= 0 ) {
             //check which key was pressed
@@ -126,7 +134,10 @@ int main()
                 break;
 
             case MAIN_STATE_AUTO_DRIVE:
+                //enter auto drive mode
                 main_auto_drive();
+                //when we exit, immediately change state
+                state = MAIN_STATE_IDLE;
                 break;
 
             case MAIN_STATE_CALIBRATE:
@@ -157,40 +168,62 @@ static void main_manual_drive( void )
     cout << "Entering manual drive mode." << endl;
 
     //we're in manual mode, enter while loop until user exits
-    char c = cv::waitKey(1);
+    char c = 0;
+    int speed = 0;
+    int direction = 0;
     while( c != KEY_ESCAPE ) {
         //get key
-        c = cv::waitKey(1);
+        //c = cv::waitKey(1);
+		cin >> c;
 
-        //do something here (modify this code!!!)
-        switch( c ) {
-            case 'l':
-                //go left
-                break;
+		if( c >= 0 ) {
+            //do something here (modify this code!!!)
+            switch( c ) {
+                case 'l':
+                    //go left
+		    		direction -= 10;
+                    cout << "Direction:" << direction << endl;
+                    break;
+    
+                case 'r':
+                    //go right
+		    		direction += 10;
+                    cout << "Direction:" << direction << endl;
+                    break;
+    
+                case 'f':
+                    //go forward
+		    		speed += 10;
+                    cout << "Speed:" << speed << endl;
+                    break;
+    
+                case 'b':
+                    //go backwards
+		    		speed -= 10;
+                    cout << "Speed:" << speed << endl;
+                    break;
+            }
 
-            case 'r':
-                //go right
-                break;
-
-            case 'f':
-                //go forward
-                break;
-
-            case 'b':
-                //go backwards
-                break;
-        }
+	    	m_truck.set_drive( (char)speed );
+	    	m_truck.set_steering( (char)direction );
+		}
     }
 }
 
 static void main_auto_drive( void )
 {
-    //analyze camera frame
-    m_nav.analyze_frame( m_camera.get_frame() );
-
-    //update truck
-    m_truck.set_drive( m_nav.speed );
-    m_truck.set_steering( m_nav.direction );
+    //open a window (we can't get key presses without a window open)
+    cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
+    
+	//wait for user to press escape
+	while(cv::waitKey(1) != KEY_ESCAPE ) {
+    	//analyze camera frame
+    	m_nav.analyze_frame( m_camera.get_frame() );
+	
+    	//update truck
+    	m_truck.set_drive( m_nav.speed );
+    	m_truck.set_steering( m_nav.direction );
+	}
 }
 
 static void main_calibrate_drive( void )
