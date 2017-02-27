@@ -145,9 +145,9 @@ static void get_input( void ) {
         char ack = 0x06;
         Serial.write(ack);
         //data must be between 1000 and 2000
-        //so offset accordingly (assuming values -100 to 100)
+        //so offset accordingly (assuming values 0 to 200)
         m_setSteering *= 5;
-        m_setSteering += 1500;
+        m_setSteering += 1000;
         //write new value to servo
         m_steering.writeMicroseconds(m_setSteering);
       } else {
@@ -177,9 +177,9 @@ static void get_input( void ) {
         char ack = 0x06;
         Serial.write(ack);
         //data must be between 1000 and 2000
-        //so offset accordingly (assuming values -100 to 100)
+        //so offset accordingly (assuming values 0 to 200)
         m_setDrive *= 5;
-        m_setDrive += 1500;
+        m_setDrive += 1000;
         //write new value to servo
         m_drive.writeMicroseconds(m_setDrive);
       } else {
