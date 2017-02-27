@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
 
 /*************************** Definitions *************************************/
 
@@ -53,16 +54,9 @@ void Navigate::analyze_frame(cv::Mat frame)
 //				1/6 width of frame at top of frame (1/5)
 void Navigate::analyze_frame_james(cv::Mat frame)
 {
-	std::vector<int> lEdge;
-	std::vector<int> rEdge;
-	std::vector<int> mEdge;
-	std::vector<int> obj;
-	std::vector<int> compromoise;
-
 	//convert frame to separate colors
 	cv::Mat colors;
 	cvtColor(frame, colors, CV_RGB2HSV);
-
 	//get obstacles in image (orange)
 	int satMin = 175;
 	int hueCenter = 116; //lower is more orange
@@ -79,115 +73,115 @@ void Navigate::analyze_frame_james(cv::Mat frame)
 	inRange(colors, Scalar(hueMin, satMin, 50), Scalar(hueMax, 255, 255), frameEdges);
 	//blend the two together
 	Mat combined;
-	cv::bitwise_not(frameEdges | frameObstacles, combined);
+	//cv::bitwise_not(frameEdges | frameObstacles, combined);
+	combined = frameEdges | frameObstacles;
 
 	//create debug img
+	//cv::cvtColor(frameEdges, p_debugImg, CV_GRAY2BGR);
 	cv::cvtColor(combined, p_debugImg, CV_GRAY2BGR);
 
-	//scan drive path for obstacles. Report first obstacle found.
-	int xEnd = combined.cols - 1;
-	int yEnd = 0;
-	int minDist;
-	int xStart;
-	for (int y = combined.rows - 1; y >= yEnd; y--) {
-		//only scan drive path, ignore rest
-		minDist = get_min_dist(y); //get drive path width
-		xStart = (combined.cols / 2) - (minDist/2); 
-		//scan drive path for objects
-		for (int x = xStart; x < (xStart + minDist); x++) {
-			//check for object
-			if (combined.at<uchar>(Point(x, y)) == 0) {
-				xEnd = x;
-				yEnd = y;
-				break;
-			}
-			else {
-				p_debugImg.at<Vec3b>(Point(x, y)) = Vec3b(255, 0, 255);
-			}
+    //find route without anything in
+    int midPoint = combined.cols / 2;
+    int prevX = midPoint;
+    std::vector<int> route;
+	for (int y = combined.rows - 1; y >= 0; y--) {
+        //push previous point onto route
+        route.push_back( prevX );
+
+        //find first edge point in both directions
+        int edgeL = prevX;
+        int edgeR = prevX;
+
+		//if next point is in an object, move it to a side
+		while (combined.at<uchar>(Point(edgeL, y)) != 0) prevX++;
+
+		//while (edgeL > 0 && frameEdges.at<uchar>(Point(edgeL, y)) == 0) {
+		while (edgeL > 0 && combined.at<uchar>(Point(edgeL, y)) == 0) {
+			p_debugImg.at<Vec3b>(Point(edgeL,y)) = Vec3b(255, 0, 0);
+			edgeL--;
 		}
-	}
-
-	//DEBUG variables
-	Point mid= Point(combined.cols / 2, yEnd);
-	Point end;
-	Scalar color;
-
-	//check where we're at
-	int backupY = combined.rows - NAVIGATE_BACKUP_ROW;
-	int leftY = combined.rows - NAVIGATE_LEFT_ROW;
-
-	//update speed and direction
-	if (yEnd > backupY ) {
-		//if its not critical, lets just go left (on far right side)
-		if (yEnd < (combined.rows - ((NAVIGATE_BACKUP_ROW / 2)) ) &&
-			xEnd >= (xStart + ((minDist * 9) / 10))) {
-			direction = -NAVIGATE_MAX_DIRECTION;
-			speed = NAVIGATE_MAX_SPEED/10;
+		while (edgeR < (combined.cols - 1) && combined.at<uchar>(Point(edgeR, y)) == 0) {
+		//while (edgeR < (frameEdges.cols - 1) && frameEdges.at<uchar>(Point(edgeR, y)) == 0) {
+			p_debugImg.at<Vec3b>(Point(edgeR,y)) = Vec3b(0, 255, 0);
+			edgeR++;
 		}
-		else {
-			//we're going backwards, we will always go right when going backwards
-			direction = NAVIGATE_MAX_DIRECTION;
-			speed = -(NAVIGATE_MAX_SPEED / 10);
-			//mid = Point(0, yEnd);
+
+        //check if we should bail early
+        if( edgeL > midPoint || edgeR < midPoint ) 
+            break;
+
+        //find next point
+        prevX = ((edgeL + edgeR)/2 + 1);
+		
+		//size
+		int gapSize = edgeR - edgeL;
+		if (gapSize < get_min_dist(y)) {
+			//gap is too small, bail
+			break;
 		}
-		color = Scalar(0, 0, 255);
-	}
-	else if (yEnd > leftY ) {
-		direction = (-NAVIGATE_MAX_DIRECTION * (yEnd - leftY) / (backupY - leftY));
-		speed = NAVIGATE_MAX_SPEED/5;
-		color = Scalar(0, 255, 0);
-	}
-	else {
-		direction = (NAVIGATE_MAX_DIRECTION * (leftY - yEnd) / leftY);
-		speed = NAVIGATE_MAX_SPEED/2;
-		//if object was found on right side, don't turn hard
-		if (xEnd > ((combined.cols / 2)-4) )
-			direction /= 3;
 
-		//we're going fast, cap max direction
-		if (direction > (NAVIGATE_MAX_DIRECTION / 4))
-			direction = (NAVIGATE_MAX_DIRECTION / 4);
+		//add pixel to debug image
+        //p_debugImg.at<Vec3b>(Point(prevX,y)) = Vec3b(255, 0, 255);
+    }
 
-		//we're going fast, cap the max direction
-		color = Scalar(255, 0, 0);
+	//look at path and determine direction
+	int right = 0;
+	int left = 0;
+	int y = frameEdges.rows - 1;
+	for (int i = 0; i < route.size(); i++) {
+		//get weight
+		int weight = (((frameEdges.rows - i) * 10) / frameEdges.rows) + 1;
+		//check if we should go left or right
+		int xLoc = route.at(i);
+		if (xLoc > (midPoint + 10)) {
+			p_debugImg.at<Vec3b>(Point(xLoc,y)) = Vec3b(0, 255, 255);
+			right += weight;
+		}
+		if (xLoc < (midPoint - 10)) {
+			p_debugImg.at<Vec3b>(Point(xLoc,y)) = Vec3b(255, 255, 0);
+			left += weight;
+		}
+		y--;
 	}
 
-	//draw line (scale max dirVal to helf-width of image)
-	int scaledVal = ((direction * 79) / NAVIGATE_MAX_DIRECTION);
-	cout << "dirVal: " << direction << " scaled: " << scaledVal << endl;
-	cout << "speedVal: " << speed << endl;
-	end = Point((combined.cols/2) + scaledVal, yEnd);
-	line(p_debugImg, mid, end, color, 1, 8, 0);
-	
-	//go up image
-	imshow("main", p_debugImg);
+	//check how fast we can go
+	//TODO:
+
+	//draw text on screen
+	if( right > left )
+		putText(p_debugImg, "Right", Point(10, 10), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+	else 
+		putText(p_debugImg, "Left", Point(10, 10), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+    //go up image
+    imshow("main", p_debugImg);
+    waitKey();
 }
-	
+
 void Navigate::analyze_frame_luke(cv::Mat frame)
 {
 }
 
 string type2str(int type) {
-	string r;
+    string r;
 
-	uchar depth = type & CV_MAT_DEPTH_MASK;
-	uchar chans = 1 + (type >> CV_CN_SHIFT);
+    uchar depth = type & CV_MAT_DEPTH_MASK;
+    uchar chans = 1 + (type >> CV_CN_SHIFT);
 
-	switch (depth) {
-	case CV_8U:  r = "8U"; break;
-	case CV_8S:  r = "8S"; break;
-	case CV_16U: r = "16U"; break;
-	case CV_16S: r = "16S"; break;
-	case CV_32S: r = "32S"; break;
-	case CV_32F: r = "32F"; break;
-	case CV_64F: r = "64F"; break;
-	default:     r = "User"; break;
-	}
+    switch (depth) {
+        case CV_8U:  r = "8U"; break;
+        case CV_8S:  r = "8S"; break;
+        case CV_16U: r = "16U"; break;
+        case CV_16S: r = "16S"; break;
+        case CV_32S: r = "32S"; break;
+        case CV_32F: r = "32F"; break;
+        case CV_64F: r = "64F"; break;
+        default:     r = "User"; break;
+    }
 
-	r += "C";
-	r += (chans + '0');
+    r += "C";
+    r += (chans + '0');
 
-	return r;
+    return r;
 }
 
 //Wheel base:	1/6 width from edge of frame at bottom (1/8)
@@ -197,11 +191,15 @@ string type2str(int type) {
 // image 160x90
 int Navigate::get_min_dist(int y)
 {
-	int topW = (160 / 6);
-	int botW = ((160 * 3) / 4) - 20;
-	int diff = botW - topW;
+    int topW = (160 / 6);
+    int botW = ((160 * 3) / 4) - 20;
+    int diff = botW - topW;
 
-	int dist = ((( y * diff ) / 90) + topW);
+    int dist = ((( y * diff ) / 90) + topW);
 
-	return (dist);
+    return (dist);
+}
+
+void Navigate::populate_areas( int x, int y )
+{
 }

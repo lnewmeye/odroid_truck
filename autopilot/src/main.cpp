@@ -53,6 +53,7 @@ static void main_manual_drive( void );
 static void main_auto_drive( void );
 /** Calibrate mode */
 static void main_calibrate_drive( void );
+static void main_report_nav( void );
 
 /****************************** Implementation *****************************/
 
@@ -65,6 +66,9 @@ int main()
 
     //open camera
     m_camera.open();
+
+	//initialize the truck
+	m_truck.connect_truck();
 
 	//open a window (we can't get key presses without a window open)
 	cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
@@ -156,6 +160,9 @@ static void main_manual_drive( void )
 {
     cout << "Entering manual drive mode." << endl;
 
+	m_nav.speed = 0;
+	m_nav.direction = 0;
+
     //we're in manual mode, enter while loop until user exits
     char c = cv::waitKey(1);
     while( c != KEY_ESCAPE ) {
@@ -166,18 +173,34 @@ static void main_manual_drive( void )
         switch( c ) {
             case 'l':
                 //go left
+				m_nav.direction -= 10;
+				m_truck.set_steering( m_nav.direction );
+				cout << "Left." << endl;
+				main_report_nav();
                 break;
 
             case 'r':
                 //go right
+				m_nav.direction += 10;
+				m_truck.set_steering( m_nav.direction );
+				cout << "Right." << endl;
+				main_report_nav();
                 break;
 
             case 'f':
                 //go forward
+				m_nav.speed += 10;
+				m_truck.set_drive( m_nav.speed );
+				cout << "Forward." << endl;
+				main_report_nav();
                 break;
 
             case 'b':
                 //go backwards
+				m_nav.speed -= 10;
+				m_truck.set_drive( m_nav.speed );
+				cout << "Backwards." << endl;
+				main_report_nav();
                 break;
         }
     }
@@ -197,3 +220,8 @@ static void main_calibrate_drive( void )
 {
 }
 
+static void main_report_nav(void)
+{
+	cout << "speed    : " << m_nav.speed << endl;
+	cout << "direction: " << m_nav.direction << endl;
+}

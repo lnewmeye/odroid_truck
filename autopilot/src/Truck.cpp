@@ -28,6 +28,10 @@ using std::string;
 
 int Truck::connect_truck( void )
 {
+#ifdef SERIAL_USE_FILE
+	return 0;
+#endif
+
 #ifdef DEBUG
 	cout << "Opening Truck" << endl;
 #endif
