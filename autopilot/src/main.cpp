@@ -54,6 +54,7 @@ static void main_manual_drive( void );
 static void main_auto_drive( void );
 /** Calibrate mode */
 static void main_calibrate_drive( void );
+static void main_report_nav( void );
 
 /****************************** Implementation *****************************/
 
@@ -70,16 +71,19 @@ int main()
     //connect to the truck
     m_truck.connect_truck();
 
+	//open a window (we can't get key presses without a window open)
+	cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
+
     //main loop (close main loop if main window closes, feel free to change)
+    main_print_usage();
     while(1) {
         //get key press and change state
-        main_print_usage();
 
 		//so apparently this doesnt' work while using ssh. Windows/putty thing?
 		//So I'll use the blocking method instead. Bummer.
-        //char c = cv::waitKey(1);
-		char c;
-		cin >> c;
+        char c = cv::waitKey(1);
+		//char c;
+		//cin >> c;
 
         //check if key was pressed
         if( c >= 0 ) {
@@ -110,7 +114,7 @@ int main()
 
 				case KEY_TEST_FRAME:
 					cout << "Testing frame." << endl;
-					main_auto_drive();
+    				m_nav.analyze_frame( m_camera.get_frame() );
 					cout << "  Speed:" << m_nav.speed << endl;
 					cout << "  Direc:" << m_nav.direction << endl;
 					break;
@@ -157,72 +161,78 @@ static void main_print_usage( void )
     printf( "Welcome to our truck. choose a key to continue:\n" );
     printf( "  %c - Calibrate\n", KEY_CALIBRATE );
     printf( "  %c - Manual Drive Mode\n", KEY_MANUAL );
-    printf( "  %c - Autopilot mode\n", KEY_AUTOPILOT );
-    printf( "  %c - Help (this message)\n", KEY_HELP );
-    printf( "  %c - Stop\n", KEY_STOP);
+	printf( "  %c - Autopilot mode\n", KEY_AUTOPILOT );
+	printf( "  %c - Test Frame\n", KEY_TEST_FRAME );
+	printf( "  %c - Help (this message)\n", KEY_HELP );
+	printf( "  %c - Stop\n", KEY_STOP);
 
 }
 
 static void main_manual_drive( void )
 {
-    cout << "Entering manual drive mode." << endl;
+	cout << "Entering manual drive mode." << endl;
 
-    //we're in manual mode, enter while loop until user exits
-    char c = 0;
-    int speed = 0;
-    int direction = 0;
-    while( c != KEY_ESCAPE ) {
-        //get key
-        //c = cv::waitKey(1);
-		cin >> c;
+	m_nav.speed = 0;
+	m_nav.direction = 0;
 
-		if( c >= 0 ) {
-            //do something here (modify this code!!!)
-            switch( c ) {
-                case 'l':
-                    //go left
-		    		direction -= 10;
-                    cout << "Direction:" << direction << endl;
-                    break;
-    
-                case 'r':
-                    //go right
-		    		direction += 10;
-                    cout << "Direction:" << direction << endl;
-                    break;
-    
-                case 'f':
-                    //go forward
-		    		speed += 10;
-                    cout << "Speed:" << speed << endl;
-                    break;
-    
-                case 'b':
-                    //go backwards
-		    		speed -= 10;
-                    cout << "Speed:" << speed << endl;
-                    break;
-            }
+	//we're in manual mode, enter while loop until user exits
+	char c = 0;
+	int speed = 0;
+	int direction = 0;
+	while( c != KEY_ESCAPE ) {
+		//get key
+		c = cv::waitKey(1);
 
-	    	m_truck.set_drive( (char)speed );
-	    	m_truck.set_steering( (char)direction );
+		//do something here (modify this code!!!)
+		switch( c ) {
+			case 'l':
+				//go left
+				m_nav.direction -= 10;
+				m_truck.set_steering( m_nav.direction );
+				cout << "Left." << endl;
+				main_report_nav();
+				break;
+
+			case 'r':
+				//go right
+				m_nav.direction += 10;
+				m_truck.set_steering( m_nav.direction );
+				cout << "Right." << endl;
+				main_report_nav();
+				break;
+
+			case 'f':
+				//go forward
+				m_nav.speed += 10;
+				m_truck.set_drive( m_nav.speed );
+				cout << "Forward." << endl;
+				main_report_nav();
+				break;
+
+			case 'b':
+				//go backwards
+				m_nav.speed -= 10;
+				m_truck.set_drive( m_nav.speed );
+				cout << "Backwards." << endl;
+				main_report_nav();
+				break;
 		}
-    }
+	}
 }
 
 static void main_auto_drive( void )
 {
-    //open a window (we can't get key presses without a window open)
-    cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
-    
+	//open a window (we can't get key presses without a window open)
+	cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
+
 	//wait for user to press escape
 	while(cv::waitKey(1) != KEY_ESCAPE ) {
-    	//analyze camera frame
-    	m_nav.analyze_frame( m_camera.get_frame() );
-	
-    	//update truck
-    	m_truck.set_drive( m_nav.speed );
-    	m_truck.set_steering( m_nav.direction );
+		//analyze camera frame
+		m_nav.analyze_frame( m_camera.get_frame() );
+
+		//update truck
+		m_truck.set_drive( m_nav.speed );
+		m_truck.set_steering( m_nav.direction );
 	}
 }
 
@@ -230,3 +240,8 @@ static void main_calibrate_drive( void )
 {
 }
 
+static void main_report_nav(void)
+{
+	cout << "speed    : " << m_nav.speed << endl;
+	cout << "direction: " << m_nav.direction << endl;
+}
