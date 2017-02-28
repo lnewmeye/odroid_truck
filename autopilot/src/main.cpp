@@ -140,6 +140,9 @@ int main()
             case MAIN_STATE_AUTO_DRIVE:
                 //enter auto drive mode
                 main_auto_drive();
+				//stop truck
+				m_truck.set_drive(0);
+				m_truck.set_steering(0);
                 //when we exit, immediately change state
                 state = MAIN_STATE_IDLE;
                 break;

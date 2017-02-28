@@ -8,11 +8,28 @@
 
 #include "Navigate.hpp"
 
+#include <math.h>
 #include <iostream>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
 /*************************** Definitions *************************************/
+
+//steering
+#define EXP_FACTOR 0.05
+#define EXP_MULTIPLIER 9.0
+
+//speed
+#define SPEED_DIST_FROM_CENTER 9
+#define SPEED_DIST0 70
+#define SPEED_DIST1 50
+#define SPEED_DIST2 20
+#define SPEED_DIST3 10
+#define SPEED_VAL0 13
+#define SPEED_VAL1 11
+#define SPEED_VAL2 10
+#define SPEED_VAL3 9
+#define SPEED_VAL4 -10
 
 using std::cout;
 using std::endl;
@@ -82,20 +99,19 @@ void Navigate::analyze_frame_james(cv::Mat frame)
 	//cv::cvtColor(frameEdges, p_debugImg, CV_GRAY2BGR);
 	cv::cvtColor(combined, p_debugImg, CV_GRAY2BGR);
 
-	//find route without anything in
+	//find route without anything in it
 	int midPoint = combined.cols / 2;
 	int prevX = midPoint;
 	std::vector<int> route;
 	for (int y = combined.rows - 1; y >= 0; y--) {
-		//push previous point onto route
-		route.push_back( prevX );
+		//if next point is inside an object, move it to a side
+		while (prevX >= 0 && combined.at<uchar>(Point(prevX, y) ) != 0 ) prevX--;
+		if (prevX < 0)
+			break;
 
 		//find first edge point in both directions
 		int edgeL = prevX;
 		int edgeR = prevX;
-
-		//if next point is in an object, move it to a side
-		while (combined.at<uchar>(Point(edgeL, y)) != 0) prevX++;
 
 		//while (edgeL > 0 && frameEdges.at<uchar>(Point(edgeL, y)) == 0) {}
 		while (edgeL > 0 && combined.at<uchar>(Point(edgeL, y)) == 0) {
@@ -109,85 +125,88 @@ void Navigate::analyze_frame_james(cv::Mat frame)
 		}
 
 		//check if we should bail early
-		if( edgeL > midPoint || edgeR < midPoint ) 
-			break;
+		//if( edgeL > midPoint || edgeR < midPoint ) 
+			//break;
 
 		//find next point
 		prevX = ((edgeL + edgeR)/2 + 1);
 
 		//size
 		int gapSize = edgeR - edgeL;
-		if (gapSize < get_min_dist(y)) {
+		if (gapSize < get_min_dist(y) && y != combined.rows - 1 ) {
 			//gap is too small, bail
 			break;
 		}
 
 		//add pixel to debug image
 		//p_debugImg.at<Vec3b>(Point(prevX,y)) = Vec3b(255, 0, 255);
+		
+		//push previous point onto route
+		route.push_back( prevX );
 	}
+
+
 
 	//look at path and determine direction
-	int right = 0;
-	int left = 0;
-	int y = frameEdges.rows - 1;
+	int dir = 0;
+	int divisor = 0;
+	speed = 0;
 	for (int i = 0; i < route.size(); i++) {
-		//get weight
-		int weight = (((frameEdges.rows - i) * 10) / frameEdges.rows) + 1;
-		//check if we should go left or right
+		//get direction we should go (weight according to where we are in image)
 		int xLoc = route.at(i);
-		if (xLoc > (midPoint + 10)) {
-			p_debugImg.at<Vec3b>(Point(xLoc,y)) = Vec3b(0, 255, 255);
-			right += weight;
-		}
-		if (xLoc < (midPoint - 10)) {
-			p_debugImg.at<Vec3b>(Point(xLoc,y)) = Vec3b(255, 255, 0);
-			left += weight;
-		}
-		y--;
-	}
+		int weight = (int)((EXP_MULTIPLIER / exp(EXP_FACTOR * i)) + 1);
+		int distFromCenter = xLoc - midPoint;
+		dir += (weight*distFromCenter);
+		//keep track of our weight so we can divide accurately
+		divisor += weight;
 
-	//check how fast we can go
-	y = frameEdges.rows - 1;
-	for (int i = 0; i < route.size(); i++) {
-		//get weight
-		int weight = (((frameEdges.rows - i) * 10) / frameEdges.rows) + 1;
-		//check if we should go left or right
-		int xLoc = route.at(i);
-		if (xLoc > (midPoint + 10)) {
-			break;
+		//check if we should set the speed (non-middle point)
+		if (speed == 0 ) {
+			if (distFromCenter > SPEED_DIST_FROM_CENTER || 
+				distFromCenter < -SPEED_DIST_FROM_CENTER ) {
+				speed = i;
+				//cout << "Speed: " << i << endl;
+			}
 		}
-		if (xLoc < (midPoint - 10)) {
-			break;
-		}
-		y--;
+	}
+#if 0
+	cout << "dir: " << dir << endl;
+	cout << "divisor: " << divisor << endl;
+	cout << "actualDir: " << dir/divisor << endl;
+#endif
+
+	//scale direction to weighted avg pixels per row
+	dir = dir / divisor;
+	//since we find the mid-point the maximum 1 direciton can be is 
+	//1/4 the image, scale this to be between -100 and 100
+	direction = (dir * 100)/40;
+
+	//change speed
+	if (speed > SPEED_DIST0)
+		speed = SPEED_VAL0;
+	else if (speed > SPEED_DIST1)
+		speed = SPEED_VAL1;
+	else if (speed > SPEED_DIST2)
+		speed = SPEED_VAL2;
+	else if (speed > SPEED_DIST3)
+		speed = SPEED_VAL3;
+	else {
+		speed = SPEED_VAL4;
+		direction = -direction;
 	}
 
 	//draw steering text on screen
-	std::string pSteering = "Steering: ";
-	int diff = right - left;
-	pSteering.append( std::to_string( diff ) );
-	putText(p_debugImg, pSteering, Point(10, 10), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+	std::string pSteering = "Direction: ";
+	pSteering.append( std::to_string( direction ) );
+	putText(p_debugImg, pSteering, Point(10, 10), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 1.0);
 
 	//draw drive text on screen
-	std::string pDrive= "Drive: ";
-	pDrive.append( std::to_string( y ) );
-	/*
-	   pDrive[7] = y/10000 + '0';
-	   y = y% 10000;
-	   pDrive[8] = y/1000 + '0';
-	   y = y % 1000;
-	   pDrive[9] = y/100 + '0';
-	   y = y % 100;
-	   pDrive[10] = y/10 + '0';
-	   y = y % 10;
-	   pDrive[11] = y + '0';
-	   */
-	putText(p_debugImg, pDrive, Point(10, 30), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
-
+	std::string pDrive= "Speed    : ";
+	pDrive.append( std::to_string( speed ) );
+	putText(p_debugImg, pDrive, Point(10, 30), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 1.0);
 
 	//go up image
 	imshow("main", p_debugImg);
-	waitKey();
 }
 
 void Navigate::analyze_frame_luke(cv::Mat frame)
