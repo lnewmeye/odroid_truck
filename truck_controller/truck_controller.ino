@@ -12,8 +12,11 @@
 /** Define baud rate */
 #define SERIAL_BAUD_RATE 115200
 /** Default servo values */
-#define DEFAULT_STEERING 1500
+#define DEFAULT_STEERING 1515
 #define DEFAULT_DRIVE 1500
+
+#define SERIAL_ACK 'y'
+#define SERIAL_NAK 'n'
 
 /** State machine for receiving data from serial connection */
 typedef enum STATE_E {
@@ -83,7 +86,7 @@ static void get_input( void ) {
       if( c == 'i' ) {
         m_state = STATE_RESET;
       } else {
-        char nak = 0x15;
+        char nak = SERIAL_NAK;
         ///Serial.write( nak );
         Serial.write( "Not Ready." );
       }
@@ -92,7 +95,7 @@ static void get_input( void ) {
 
     case STATE_RESET:
     {
-      char ack = 0x06;
+      char ack = SERIAL_ACK;
       m_steering.writeMicroseconds( DEFAULT_STEERING );
       m_drive.writeMicroseconds( DEFAULT_DRIVE );
       //Serial.write( ack );
@@ -109,10 +112,12 @@ static void get_input( void ) {
       //check command
       switch( c ) {
         case 's':
+        m_setSteering = 0;
         m_state = STATE_GET_STEERING1;
         break;
 
         case 'd':
+        m_setDrive = 0;
         m_state = STATE_GET_DRIVE1;
         break;
 
@@ -130,42 +135,52 @@ static void get_input( void ) {
     case STATE_GET_STEERING1:
     //check if any data available on serial connection
     if( Serial.available() ) {
-      //get the value
-      m_setSteering = Serial.read();
-      //change state
-      m_state = STATE_GET_STEERING2;
-    }
-    break;
-
-    case STATE_GET_STEERING2:
-    //check if any data available on serial connection
-    if( Serial.available() ) {
-      //check that we got the same value
-      if( m_setSteering == Serial.read() ) {
-        char ack = 0x06;
-        Serial.write(ack);
-        //data must be between 1000 and 2000
-        //so offset accordingly (assuming values 0 to 200)
-        m_setSteering *= 5;
-        m_setSteering += 1000;
-        //write new value to servo
-        m_steering.writeMicroseconds(m_setSteering);
-      } else {
-        char nak = 0x15;
-        Serial.write(nak);
+      int i;
+      i = Serial.read();
+      if( i > 0 ) {
+        if( i >= '0' && i <= '9' ) {
+          m_setSteering = m_setSteering*10 + (i-'0');
+        } else if( i == '\n' ) {
+          //Serial.write( "Setting steering to: " );
+          //Serial.print( m_setSteering, DEC );
+          //Serial.print( '\n' );
+          //data must be between 1000 and 2000
+          //so offset accordingly (assuming values 0 to 200)
+          m_setSteering *= 5;
+          m_setSteering += 1015;
+          m_steering.writeMicroseconds(m_setSteering);
+          Serial.write( 'y' );
+          m_state = STATE_IDLE;
+        } else {
+          Serial.write( 'n' );
+          m_state = STATE_IDLE;
+        }
       }
-      //go back to idle state
-      m_state = STATE_IDLE;
     }
     break;
 
     case STATE_GET_DRIVE1:
     //check if any data available on serial connection
     if( Serial.available() ) {
-      //get the value
-      m_setDrive = Serial.read();
-      //change state
-      m_state = STATE_GET_DRIVE2;
+      int i;
+      i = Serial.read();
+      if( i > 0 ) {
+        if( i >= '0' && i <= '9' ) {
+          m_setDrive = m_setDrive*10 + (i-'0');
+        } else if( i == '\n' ) {
+          //Serial.write( "Setting drive to: " );
+          //Serial.print( m_setDrive, DEC );
+          //Serial.print( '\n' );
+           m_setDrive *= 5;
+          m_setDrive += 1000;
+          m_drive.writeMicroseconds(m_setDrive);
+          Serial.write( 'y' );
+          m_state = STATE_IDLE;
+        } else {
+          Serial.write( 'n' );
+          m_state = STATE_IDLE;
+        }
+      }
     }
     break;
 
@@ -174,7 +189,7 @@ static void get_input( void ) {
     if( Serial.available() ) {
       //check that we got the same value
       if( m_setDrive == Serial.read() ) {
-        char ack = 0x06;
+        char ack = SERIAL_ACK;
         Serial.write(ack);
         //data must be between 1000 and 2000
         //so offset accordingly (assuming values 0 to 200)
@@ -183,7 +198,7 @@ static void get_input( void ) {
         //write new value to servo
         m_drive.writeMicroseconds(m_setDrive);
       } else {
-        char nak = 0x15;
+        char nak = SERIAL_NAK;
         Serial.write(nak);
       }
       //go back to idle state
