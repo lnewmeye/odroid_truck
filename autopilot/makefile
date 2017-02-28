@@ -26,7 +26,7 @@ MKDIR = mkdir
 
 CC=g++
 LD=g++
-CFLAGS = -std=c++11 
+CFLAGS = -std=c++11 -I$(OPENCV_DIR)/include
 LIB_PATH = /usr/local/lib
 LFLAGS = -L$(LIB_PATH) -lopencv_core -lopencv_imgcodecs -lopencv_videoio -lopencv_highgui -lopencv_imgproc -lopencv_calib3d
 

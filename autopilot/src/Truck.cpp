@@ -95,11 +95,27 @@ int Truck::connect_truck( void )
 void Truck::set_drive(char drive_speed)
 {
 	int tries;
+	
+	//for now, limit it to 15
+	drive_speed = (char)(((int)drive_speed * 15 ) / 100 );
+	
+	//truck accepts 0 to 200 with 100 being center
+	//this function accepts -100 to 100 (offset)
+	drive_speed += 100; 
+
 	for( tries = 0; tries < 3; tries++ ) {
-		//send sterring command
-		p_serial.putc( 'd' );
-		p_serial.putc( drive_speed );
-		p_serial.putc( drive_speed );
+		char driveCmd[5];
+		driveCmd[0] = 'd';
+		driveCmd[1] = (drive_speed/100) + '0';
+		drive_speed = drive_speed % 100;
+		driveCmd[2] = (drive_speed/10) + '0';
+		drive_speed = drive_speed % 10;
+		driveCmd[3] = (drive_speed) + '0';
+		driveCmd[4] = '\n';
+		p_serial.write( driveCmd, 5 );
+
+		//driveCmd[4] = '\0';
+		//cout << "Drive: " << driveCmd << endl;
 
 		//check for ack
 		wait_for_resp(1);
@@ -125,11 +141,29 @@ void Truck::set_drive(char drive_speed)
 void Truck::set_steering(char steering_angle)
 {
 	int tries;
+
+	//left is actualy positive, bleh
+	steering_angle *= -1;
+
+	//truck accepts 0 to 200 with 100 being center
+	//this function accepts -100 to 100 (offset)
+	steering_angle += 100; 
+
+	//try 3 times
 	for( tries = 0; tries < 3; tries++ ) {
-		//send sterring command
-		p_serial.putc( 's' );
-		p_serial.putc( steering_angle );
-		p_serial.putc( steering_angle );
+		char cmd[5];
+		cmd[0] = 's';
+		cmd[1] = (steering_angle/100) + '0';
+		steering_angle= steering_angle% 100;
+		cmd[2] = (steering_angle/10) + '0';
+		steering_angle= steering_angle% 10;
+		cmd[3] = (steering_angle) + '0';
+		cmd[4] = '\n';
+		p_serial.write( cmd, 5 );
+		
+		//cmd[4] = '\0';
+		//cout << "Steering: " << cmd << endl;
+
 
 		//check for ack
 		wait_for_resp(1);

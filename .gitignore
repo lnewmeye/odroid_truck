@@ -2,4 +2,7 @@
 
 *~
 *.swp
-autopilot/odroid_truck
+
+# Binary and Objects folders
+autopilot/objs
+autopilot/bin

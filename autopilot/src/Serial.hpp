@@ -11,8 +11,8 @@
 
 //#define SERIAL_USE_FILE "serial.txt"
 
-#define SERIAL_ACK 0x06
-#define SERIAL_NAK 0x15
+#define SERIAL_ACK 'y'
+#define SERIAL_NAK 'n'
 
 class Serial {
 	public:
