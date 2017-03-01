@@ -13,11 +13,6 @@
 #define NAVIGATE_NUM_AREAS 4
 //#define NAVIGATE_USE_LUKE
 
-#define NAVIGATE_BACKUP_ROW 10
-#define NAVIGATE_LEFT_ROW 40
-#define NAVIGATE_MAX_DIRECTION 100
-#define NAVIGATE_MAX_SPEED 100
-
 typedef enum NAV_STATE_E {
     NAV_STATE_FOLLOW_EDGE = 0,
     NAV_STATE_AVOID_OBSTACLE,
@@ -29,11 +24,16 @@ class Navigate {
 public:
 	int speed;
 	int direction;
+	int confidenceRow;
+	int bailCnt;
+	bool bailDirectionSet;
+	bool bailDirectionRight;
 
 	//methods
 public:
 	Navigate();
 	void analyze_frame(cv::Mat frame);
+	void analyze_bail(cv::Mat frame);
 
 	//private variables
 private:
@@ -44,6 +44,10 @@ private:
     int p_softLeft;
     int p_hardRight;
     int p_softRight;
+	float p_objDir;
+	float p_edgeDir;
+	float p_objSpeed;
+	float p_edgeSpeed;
 
 	//private methods
 private:

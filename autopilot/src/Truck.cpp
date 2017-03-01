@@ -97,7 +97,7 @@ void Truck::set_drive(char drive_speed)
 	int tries;
 	
 	//for now, limit it to 15
-	drive_speed = (char)(((int)drive_speed * 15 ) / 100 );
+	//drive_speed = (char)(((int)drive_speed * 15 ) / 100 );
 	
 	//truck accepts 0 to 200 with 100 being center
 	//this function accepts -100 to 100 (offset)

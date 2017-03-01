@@ -231,7 +231,15 @@ static void main_auto_drive( void )
 	//wait for user to press escape
 	while(cv::waitKey(1) != KEY_ESCAPE ) {
 		//analyze camera frame
-		m_nav.analyze_frame( m_camera.get_frame() );
+		cv::Mat frame = m_camera.get_frame();
+
+		std::cout << "bailCnt: " << m_nav.bailCnt << std::endl;
+
+		if( m_nav.bailCnt < 5 ) {
+			m_nav.analyze_frame(frame);
+		} else {
+			m_nav.analyze_bail(frame);
+		}
 
 		//update truck
 		m_truck.set_drive( m_nav.speed );
