@@ -12,7 +12,7 @@
 #include "Serial.hpp"
 #include <iostream>
 
-#define DEBUG
+//#define DEBUG
 
 class Truck {
 	//methods

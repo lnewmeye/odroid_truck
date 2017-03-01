@@ -55,8 +55,9 @@ int Truck::connect_truck( void )
 
 	//read bytes
 	while( p_serial.hitc() ) {
+		int c = p_serial.getc();
 #ifdef DEBUG
-		printf("Reading: %c\n", p_serial.getc() );
+		printf("Reading: %c\n", c );
 #endif
 	}
 	
@@ -69,8 +70,9 @@ int Truck::connect_truck( void )
 
 	//read bytes
 	while( p_serial.hitc() ) {
+		int c = p_serial.getc();
 #ifdef DEBUG
-		printf("Reading: %c\n", p_serial.getc() );
+		printf("Reading: %c\n", c );
 #endif
 	}
 
