@@ -29,6 +29,11 @@ void Camera::open( void )
 	p_vCap.open(0);
 #endif
 	if( p_vCap.isOpened() ) {
+#ifndef CAMERA_USE_FILE
+		//set resolution
+		p_vCap.set(CV_CAP_PROP_FRAME_WIDTH, 160 );
+		p_vCap.set(CV_CAP_PROP_FRAME_HEIGHT, 90 );
+#endif
 		p_opened = true;
 	} else {
 		std::cout << "Error: Unable to open camera.\n";
