@@ -28,11 +28,11 @@
 
 /** Main state machine */
 typedef enum MAIN_STATE_E {
-    MAIN_STATE_IDLE = 0,
-    MAIN_STATE_MANUAL_DRIVE,
-    MAIN_STATE_AUTO_DRIVE,
-    MAIN_STATE_CALIBRATE,
-    MAIN_STATE_NUMS
+	MAIN_STATE_IDLE = 0,
+	MAIN_STATE_MANUAL_DRIVE,
+	MAIN_STATE_AUTO_DRIVE,
+	MAIN_STATE_CALIBRATE,
+	MAIN_STATE_NUMS
 } MAIN_STATE_T;
 
 using std::cout;
@@ -60,110 +60,110 @@ static void main_report_nav( void );
 
 int main()
 {
-    MAIN_STATE_T state = MAIN_STATE_IDLE;
+	MAIN_STATE_T state = MAIN_STATE_IDLE;
 
-    //print usage
-    main_print_usage();
+	//print usage
+	main_print_usage();
 
-    //open camera
-    m_camera.open();
+	//open camera
+	m_camera.open();
 
-    //connect to the truck
-    m_truck.connect_truck();
+	//connect to the truck
+	m_truck.connect_truck();
 
 	//open a window (we can't get key presses without a window open)
 	cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
 
-    //main loop (close main loop if main window closes, feel free to change)
-    main_print_usage();
-    while(1) {
-        //get key press and change state
+	//main loop (close main loop if main window closes, feel free to change)
+	main_print_usage();
+	while(1) {
+		//get key press and change state
 
 		//so apparently this doesnt' work while using ssh. Windows/putty thing?
 		//So I'll use the blocking method instead. Bummer.
-        char c = cv::waitKey(1);
+		char c = cv::waitKey(1);
 		//char c;
 		//cin >> c;
 
-        //check if key was pressed
-        if( c >= 0 ) {
-            //check which key was pressed
-            switch( c ) {
-                case KEY_CALIBRATE:
-					cout << "Entering Calibrate state." << endl;
-                    state = MAIN_STATE_CALIBRATE;
-                    break;
+		//check if key was pressed
+		if( c >= 0 ) {
+			//check which key was pressed
+			switch( c ) {
+			case KEY_CALIBRATE:
+				cout << "Entering Calibrate state." << endl;
+				state = MAIN_STATE_CALIBRATE;
+				break;
 
-                case KEY_MANUAL:
-					cout << "Entering Manual Drive state." << endl;
-                    state = MAIN_STATE_MANUAL_DRIVE;
-                    break;
+			case KEY_MANUAL:
+				cout << "Entering Manual Drive state." << endl;
+				state = MAIN_STATE_MANUAL_DRIVE;
+				break;
 
-                case KEY_STOP:
-					cout << "Stopping truck" << endl;
-					m_truck.set_drive(0);
-					m_truck.set_steering(0);
-					cout << "Entering Idle state." << endl;
-                    state = MAIN_STATE_IDLE;
-                    break;
-
-                case KEY_AUTOPILOT:
-					cout << "Entering Auto Drive state." << endl;
-                    state = MAIN_STATE_AUTO_DRIVE;
-                    break;
-
-				case KEY_TEST_FRAME:
-					cout << "Testing frame." << endl;
-    				m_nav.analyze_frame( m_camera.get_frame() );
-					cout << "  Speed:" << m_nav.speed << endl;
-					cout << "  Direc:" << m_nav.direction << endl;
-					break;
-
-                case KEY_HELP:
-                    main_print_usage();
-                    break;
-            }
-        }
-
-        //run state machine
-        switch( state ) {
-            case MAIN_STATE_IDLE:
-                break;
-
-            case MAIN_STATE_MANUAL_DRIVE:
-                //enter manual drive mode
-                main_manual_drive();
-                //when we exit, immediately change state
-                state = MAIN_STATE_IDLE;
-                break;
-
-            case MAIN_STATE_AUTO_DRIVE:
-                //enter auto drive mode
-                main_auto_drive();
-				//stop truck
+			case KEY_STOP:
+				cout << "Stopping truck" << endl;
 				m_truck.set_drive(0);
 				m_truck.set_steering(0);
-                //when we exit, immediately change state
-                state = MAIN_STATE_IDLE;
-                break;
-
-            case MAIN_STATE_CALIBRATE:
-                //main_calibrate_drive();
-				cout << "Calibrate not implemented." << endl;
-				cout << "Returning to idle." << endl;
+				cout << "Entering Idle state." << endl;
 				state = MAIN_STATE_IDLE;
-                break;
-        }
-    }
+				break;
 
-    return 0;
+			case KEY_AUTOPILOT:
+				cout << "Entering Auto Drive state." << endl;
+				state = MAIN_STATE_AUTO_DRIVE;
+				break;
+
+			case KEY_TEST_FRAME:
+				cout << "Testing frame." << endl;
+				m_nav.analyze_frame( m_camera.get_frame() );
+				cout << "  Speed:" << m_nav.speed << endl;
+				cout << "  Direc:" << m_nav.direction << endl;
+				break;
+
+			case KEY_HELP:
+				main_print_usage();
+				break;
+			}
+		}
+
+		//run state machine
+		switch( state ) {
+		case MAIN_STATE_IDLE:
+			break;
+
+		case MAIN_STATE_MANUAL_DRIVE:
+			//enter manual drive mode
+			main_manual_drive();
+			//when we exit, immediately change state
+			state = MAIN_STATE_IDLE;
+			break;
+
+		case MAIN_STATE_AUTO_DRIVE:
+			//enter auto drive mode
+			main_auto_drive();
+			//stop truck
+			m_truck.set_drive(0);
+			m_truck.set_steering(0);
+			//when we exit, immediately change state
+			state = MAIN_STATE_IDLE;
+			break;
+
+		case MAIN_STATE_CALIBRATE:
+			//main_calibrate_drive();
+			cout << "Calibrate not implemented." << endl;
+			cout << "Returning to idle." << endl;
+			state = MAIN_STATE_IDLE;
+			break;
+		}
+	}
+
+	return 0;
 }
 
 static void main_print_usage( void )
 {
-    printf( "Welcome to our truck. choose a key to continue:\n" );
-    printf( "  %c - Calibrate\n", KEY_CALIBRATE );
-    printf( "  %c - Manual Drive Mode\n", KEY_MANUAL );
+	printf( "Welcome to our truck. choose a key to continue:\n" );
+	printf( "  %c - Calibrate\n", KEY_CALIBRATE );
+	printf( "  %c - Manual Drive Mode\n", KEY_MANUAL );
 	printf( "  %c - Autopilot mode\n", KEY_AUTOPILOT );
 	printf( "  %c - Test Frame\n", KEY_TEST_FRAME );
 	printf( "  %c - Help (this message)\n", KEY_HELP );

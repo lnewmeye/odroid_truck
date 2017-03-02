@@ -12,9 +12,9 @@
 
 /** Navigate state machine */
 typedef enum NAV_STATE_E {
-    NAV_STATE_FORWARD = 0,
-    NAV_STATE_BAIL,
-    NAV_STATE_NUMS
+	NAV_STATE_FORWARD = 0,
+	NAV_STATE_BAIL,
+	NAV_STATE_NUMS
 } NAV_STATE_T;
 
 /** Bail state machine */
@@ -38,8 +38,8 @@ public:
 
 	//private variables
 private:
-    NAV_STATE_T p_navState;
-    NAV_BAIL_STATE_T p_bailState;
+	NAV_STATE_T p_navState;
+	NAV_BAIL_STATE_T p_bailState;
 	cv::Mat p_debugImg;
 	int p_bailCnt;
 	bool p_bail;
