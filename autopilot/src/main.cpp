@@ -228,22 +228,21 @@ static void main_auto_drive( void )
 	//open a window (we can't get key presses without a window open)
 	cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
 
+	//analyze camera frame
+	cv::Mat frame = m_camera.get_frame();
+
 	//wait for user to press escape
-	while(cv::waitKey(1) != KEY_ESCAPE ) {
-		//analyze camera frame
-		cv::Mat frame = m_camera.get_frame();
-
-		std::cout << "bailCnt: " << m_nav.bailCnt << std::endl;
-
-		if( m_nav.bailCnt < 5 ) {
-			m_nav.analyze_frame(frame);
-		} else {
-			m_nav.analyze_bail(frame);
-		}
+	int bailCnt = 0;
+	while(cv::waitKey(1) != KEY_ESCAPE && !frame.empty() ) {
+		//analyze frame
+		m_nav.analyze_frame(frame);
 
 		//update truck
 		m_truck.set_drive( m_nav.speed );
 		m_truck.set_steering( m_nav.direction );
+
+		//get next frame
+		frame = m_camera.get_frame();
 	}
 }
 

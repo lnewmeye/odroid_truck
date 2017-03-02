@@ -24,11 +24,16 @@ void Camera::open( void )
 	//cv::String filename(CAMERA_USE_FILE);
 	p_vCap.open(CAMERA_USE_FILE);
 	//fast forward
-	for (int i = 0; i < 4500; i++) { cv::Mat frame; p_vCap >> frame; }
+	for (int i = 0; i < 5; i++) { 
+		cv::Mat frame; 
+		p_vCap >> frame; 
+	}
 #else
 	p_vCap.open(0);
 #endif
+
 	if( p_vCap.isOpened() ) {
+
 #ifndef CAMERA_USE_FILE
 		//set resolution
 		p_vCap.set(CV_CAP_PROP_FRAME_WIDTH, 160 );
