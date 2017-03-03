@@ -10,44 +10,77 @@
 
 /*************************** Definitions *************************************/
 
-typedef enum DRIVE_STATE {
-	DRIVE_FOLLOW_INNER,
-	DRIVE_AVOID_INNER,
-	DRIVE_FOLLOW_OUTTER,
-	DRIVE_AVOID_OUTTER
-} DRIVE_STATE;
+// Parameters for edges
+#define EDGE_HUE 120
+#define EDGE_RANGE 30
+#define EDGE_SATURATION_MIN 60
+#define EDGE_VALUE_MIN 70
+#define EDGE_DILATION 5
+
+// Parameters for obstacles
+#define CONES_HUE 8
+#define CONES_RANGE 8
+#define CONES_SATURATION_MIN 70
+#define CONES_VALUE_MIN 70
+
+// Parameters for truck location
+#define TRUCK_DEFAULT_RIGHT
+#define TRUCK_INNER_DISTANCE
+#define TRUCK_OUTER_DISTANCE
+
+// Parameters for navigation
+#define OUTER_COUNT_MAX 15
+
+typedef enum NAVIGATE_STATE {
+	NAVIGATE_FOLLOW_INNER,
+	NAVIGATE_FOLLOW_OUTER,
+	NAVIGATE_AVOID_INNER,
+	NAVIGATE_AVOID_OUTER,
+	NAVIGATE_REVERSE_INNER,
+	NAVIGATE_REVERSE_OUTER
+} NAVIGATE_STATE;
+
+typedef struct Edge {
+	bool exists;
+	double left;
+	double top;
+	double width;
+	double height;
+} Edge;
 
 class Navigate {
-	//variables
+
 public:
+	// Public variables
 	int speed;
 	int direction;
 
-	//methods
-public:
+	// Public functions
 	Navigate() {}
-	void analyze_frame(cv::Mat frame);
-	//void analyze_bail(cv::Mat frame);
+	void navigateFrame(cv::Mat frame);
 	cv::Mat getEdges() {return edges_frame;}
-	cv::Mat getObstacles() {return obstacles_frame;}
+	cv::Mat getCones() {return cones_frame;}
+	cv::Mat getComposite() {return edges_frame+cones_frame;}
 
 private:
-	DRIVE_STATE drive_state = DRIVE_FOLLOW_INNER;
-	cv::Mat obstacles_frame;
+	// Private variables
+	NAVIGATE_STATE navigate_state = NAVIGATE_FOLLOW_INNER;
 	cv::Mat edges_frame;
-	//NAV_STATE_T p_navState;
-	//NAV_BAIL_STATE_T p_bailState;
-	//cv::Mat p_debugImg;
-	//int p_bailCnt;
-	//bool p_bail;
-	//bool p_bailToTheRight; //until object on left
+	cv::Mat cones_frame;
+	Edge inner_edge;
+	Edge outer_edge;
+	bool cone_front = false;
+	bool cone_left = false;
+	bool cone_right = false;
+	int outer_count = 0;
 
-
-	//private methods
-private:
-	//void analyze_forward( cv::Mat frame );
-	//void analyze_bail( cv::Mat frame );
-	//int get_min_dist(int y);
-	void get_obstacles(cv::Mat frame);
-	void get_edges(cv::Mat frame);
+	// Priave functions
+	void processEdges(cv::Mat frame);
+	void processCones(cv::Mat frame);
+	void followInner();
+	void followOuter();
+	void avoidInner();
+	void avoidOuter();
+	void reverseInner();
+	void reverseOuter();
 };

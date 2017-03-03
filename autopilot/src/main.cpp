@@ -248,17 +248,42 @@ static void main_auto_drive( void )
 
 	//wait for user to press escape
 	while(keypress != 'q' && frame.data) {
+
 		//analyze frame
-		m_nav.analyze_frame(frame);
+		m_nav.navigateFrame(frame);
 
 		//update truck
 		m_truck.set_drive( m_nav.speed );
 		m_truck.set_steering( m_nav.direction );
 
-		cout << "Ready for keypress" << endl;
-
 		// Wait for key press
-		keypress = cv::waitKey(0);
+		keypress = cv::waitKey(500);
+
+		// Update statemachine based on keypress (for display output)
+		switch(keypress) {
+			case 'e':
+				auto_state = AUTO_STATE_EDGES;
+				cout << "Displaying edges" << endl;
+				break;
+
+			case 'o':
+				auto_state = AUTO_STATE_OBSTACLES;
+				cout << "Displaying obstacles" << endl;
+				break;
+
+			case 'c':
+				auto_state = AUTO_STATE_COMPOSITE;
+				cout << "Displaying composite" << endl;
+				break;
+
+			case 'v':
+				auto_state = AUTO_STATE_VIDEO;
+				cout << "Displaying video" << endl;
+				break;
+
+			default:
+				break;
+		}
 
 		// Display output based on state machine
 		switch(auto_state) {
@@ -271,7 +296,7 @@ static void main_auto_drive( void )
 				break;
 
 			case AUTO_STATE_COMPOSITE:
-				display = frame;
+				display = m_nav.getComposite();
 				break;
 				
 			case AUTO_STATE_VIDEO:
@@ -283,32 +308,9 @@ static void main_auto_drive( void )
 				break;
 		}
 
-		// Update statemachine based on keypress (for display output)
-		switch(keypress) {
-			case 'e':
-				auto_state = AUTO_STATE_EDGES;
-				break;
-
-			case 'o':
-				auto_state = AUTO_STATE_OBSTACLES;
-				break;
-
-			case 'c':
-				auto_state = AUTO_STATE_COMPOSITE;
-				break;
-
-			case 'v':
-				auto_state = AUTO_STATE_VIDEO;
-				break;
-
-			default:
-				break;
-		}
-
 		// Display frame
 		cv::imshow("Auto Drive", display);
-
-		cout << "Ready to get next frame" << endl;
+		cv::imshow("main", frame);
 
 		//get next frame
 		frame = m_camera.get_frame();
@@ -317,10 +319,12 @@ static void main_auto_drive( void )
 
 void auto_print_usage()
 {
-	cout << "Auto drive mode:" << endl;
-	cout << "\t'q' to quit" << endl;
-	cout << "\t'e' view edges" << endl;
-	cout << "\t'o' view obstacles" << endl;
+	cout << "Auto drive mode. Choose from the following options" << endl;
+	cout << "\tq - Quit auto drive" << endl;
+	cout << "\tv - Display raw video" << endl;
+	cout << "\te - Display edges" << endl;
+	cout << "\to - Display obstacles" << endl;
+	cout << "\tc - Display composite image" << endl;
 }
 
 static void main_calibrate_drive( void )
