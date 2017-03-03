@@ -6,3 +6,6 @@
 # Binary and Objects folders
 autopilot/objs
 autopilot/bin
+
+# Vidoes (used for test data input)
+*.avi

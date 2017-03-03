@@ -46,10 +46,6 @@ int Truck::connect_truck( void )
 	}
 #endif
 
-#ifdef DEBUG
-	cout << "Write 'i'" << endl;
-#endif
-
 	//wait for initialization flag
 	wait_for_resp( 11 );
 
@@ -76,20 +72,6 @@ int Truck::connect_truck( void )
 #endif
 	}
 
-#ifdef DEBUG
-	//test steering
-	set_steering( 100 );
-	//sleep(1);
-	set_steering( 0 );
-
-	//test drive	
-	//set_drive( 1 );
-	//sleep(1);
-	//set_drive( -1 );
-	//sleep(1);
-	//set_drive( 0 );
-#endif
-
 	// Exit with success
 	return 0;
 }
@@ -114,7 +96,9 @@ void Truck::set_drive(char drive_speed)
 		drive_speed = drive_speed % 10;
 		driveCmd[3] = (drive_speed) + '0';
 		driveCmd[4] = '\n';
+#ifndef SERIAL_USE_FILE
 		p_serial.write( driveCmd, 5 );
+#endif
 
 		//driveCmd[4] = '\0';
 		//cout << "Drive: " << driveCmd << endl;
@@ -161,7 +145,9 @@ void Truck::set_steering(char steering_angle)
 		steering_angle= steering_angle% 10;
 		cmd[3] = (steering_angle) + '0';
 		cmd[4] = '\n';
+#ifndef SERIAL_USE_FILE
 		p_serial.write( cmd, 5 );
+#endif
 		
 		//cmd[4] = '\0';
 		//cout << "Steering: " << cmd << endl;

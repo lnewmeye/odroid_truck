@@ -8,16 +8,12 @@
 
 #include <iostream>
 #include "Serial.hpp"
-
 #include <string.h>
-
-#ifndef SERIAL_USE_FILE
 #include <errno.h>
 #include <fcntl.h> 
 #include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#endif
 
 /****************************** Definitions **********************************/
 
@@ -37,8 +33,6 @@ Serial::Serial( void )
 
 bool Serial::open( void )
 {
-#ifdef SERIAL_USE_FILE
-#else
 	p_fd = ::open( SERIAL_PORT, O_RDWR | O_NOCTTY | O_SYNC );
 	if( p_fd < 0 ) {
 		cout <<  "Error: " << errno << "opening " << SERIAL_PORT << " " << strerror (errno);
@@ -49,7 +43,6 @@ bool Serial::open( void )
 		cout <<  "Serial Error: Couldn't set attributes\n";
 		return -1;
 	}
-#endif
 	
 	return 0;
 }
@@ -57,70 +50,50 @@ bool Serial::open( void )
 bool Serial::hitc( void ) 
 {
 	int bytesAvail;
-#ifdef SERIAL_USE_FILE
-	bytesAvail = 1;
-#else
 	ioctl( p_fd, FIONREAD, &bytesAvail );
-#endif
+
 	return ( bytesAvail > 0 );
 }
 
 int Serial::bytes_available( void ) 
 {
 	int bytesAvail;
-#ifdef SERIAL_USE_FILE
-	bytesAvail = 1;
-#else
 	ioctl( p_fd, FIONREAD, &bytesAvail );
-#endif
+
 	return bytesAvail;
 }
 
 char Serial::getc( void ) 
 {
 	char c;
-#ifdef SERIAL_USE_FILE
-	c = 0;
-#else
 	//don't use read from this class (::)
 	::read( p_fd, &c, 1);
-#endif
+
 	return c;
 }
 
 int Serial::read( char *data, int size)
 {
-#ifdef SERIAL_USE_FILE
-	return 0;
-#else
 	//don't use read from this class (::)
 	return ::read( p_fd, data, size );
-#endif
 }
 
 void Serial::putc( char c )
 {
-#ifdef SERIAL_USE_FILE
-#else
 	//don't use write from this class (::)
 	::write( p_fd, &c, 1);
 	//allow time to write
 	usleep( MICROSEC_PER_BYTE );
-#endif
 }
 
 void Serial::write( char *data, int size)
 {
-#ifdef SERIAL_USE_FILE
-#else
 	//don't use write from this class (::)
 	::write( p_fd, data, size);
 	//allow time to write
 	usleep( MICROSEC_PER_BYTE*size );
-#endif
 }
 
-#ifndef SERIAL_USE_FILE
 int Serial::set_interface_attribs (int fd, int speed, int parity)
 {
 	struct termios tty;
@@ -174,4 +147,3 @@ int Serial::set_interface_attribs (int fd, int speed, int parity)
 
 	return 0;
 }
-#endif

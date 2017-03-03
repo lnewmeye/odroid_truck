@@ -35,6 +35,13 @@ typedef enum MAIN_STATE_E {
 	MAIN_STATE_NUMS
 } MAIN_STATE_T;
 
+typedef enum AUTO_STATE {
+	AUTO_STATE_EDGES,
+	AUTO_STATE_OBSTACLES,
+	AUTO_STATE_COMPOSITE,
+	AUTO_STATE_VIDEO
+} AUTO_STATE;
+
 using std::cout;
 using std::cin;
 using std::cin;
@@ -51,6 +58,7 @@ static void main_print_usage( void );
 /** Manual drive mode (will enter it's own loop) */
 static void main_manual_drive( void );
 /** Autopilot mode */
+void auto_print_usage();
 static void main_auto_drive( void );
 /** Calibrate mode */
 static void main_calibrate_drive( void );
@@ -114,7 +122,7 @@ int main()
 
 			case KEY_TEST_FRAME:
 				cout << "Testing frame." << endl;
-				m_nav.analyze_frame( m_camera.get_frame() );
+				//m_nav.analyze_frame( m_camera.get_frame() );
 				cout << "  Speed:" << m_nav.speed << endl;
 				cout << "  Direc:" << m_nav.direction << endl;
 				break;
@@ -225,15 +233,21 @@ static void main_manual_drive( void )
 
 static void main_auto_drive( void )
 {
-	//open a window (we can't get key presses without a window open)
-	cv::namedWindow("main", CV_WINDOW_KEEPRATIO);
+	// Print auto drive usage
+	auto_print_usage();
 
-	//analyze camera frame
+	// Open display window
+	cv::namedWindow("Auto Drive", CV_WINDOW_KEEPRATIO);
+
+	// Analyze camera frame
 	cv::Mat frame = m_camera.get_frame();
+	cv::Mat display;
+
+	char keypress;
+	AUTO_STATE auto_state = AUTO_STATE_VIDEO;
 
 	//wait for user to press escape
-	int bailCnt = 0;
-	while(cv::waitKey(1) != KEY_ESCAPE && !frame.empty() ) {
+	while(keypress != 'q' && frame.data) {
 		//analyze frame
 		m_nav.analyze_frame(frame);
 
@@ -241,9 +255,72 @@ static void main_auto_drive( void )
 		m_truck.set_drive( m_nav.speed );
 		m_truck.set_steering( m_nav.direction );
 
+		cout << "Ready for keypress" << endl;
+
+		// Wait for key press
+		keypress = cv::waitKey(0);
+
+		// Display output based on state machine
+		switch(auto_state) {
+			case AUTO_STATE_EDGES:
+				display = m_nav.getEdges();
+				break;
+
+			case AUTO_STATE_OBSTACLES:
+				display = m_nav.getObstacles();
+				break;
+
+			case AUTO_STATE_COMPOSITE:
+				display = frame;
+				break;
+				
+			case AUTO_STATE_VIDEO:
+				display = frame;
+				break;
+
+			default:
+				display = frame;
+				break;
+		}
+
+		// Update statemachine based on keypress (for display output)
+		switch(keypress) {
+			case 'e':
+				auto_state = AUTO_STATE_EDGES;
+				break;
+
+			case 'o':
+				auto_state = AUTO_STATE_OBSTACLES;
+				break;
+
+			case 'c':
+				auto_state = AUTO_STATE_COMPOSITE;
+				break;
+
+			case 'v':
+				auto_state = AUTO_STATE_VIDEO;
+				break;
+
+			default:
+				break;
+		}
+
+		// Display frame
+		cv::imshow("Auto Drive", display);
+
+		cout << "Ready to get next frame" << endl;
+
 		//get next frame
 		frame = m_camera.get_frame();
 	}
+}
+
+void auto_print_usage()
+{
+	cout << "Auto drive mode:" << endl;
+	cout << "\t'q' to quit" << endl;
+	cout << "\t'e' view edges" << endl;
+	cout << "\t'o' view obstacles" << endl;
 }
 
 static void main_calibrate_drive( void )

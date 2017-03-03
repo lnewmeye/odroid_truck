@@ -1,6 +1,5 @@
 /******************************************************************************
- * Serial Class - This may source directly from a serial port or from a file
- * 		  depending if the SERIAL_USE_FILE definition is set.
+ * Serial Class
  *
  * Authors: James Swift, Luke Newmeyer
  * Copyright 2017
@@ -8,8 +7,6 @@
 #pragma once
 
 /****************************** Include Files ********************************/
-
-#define SERIAL_USE_FILE "serial.txt"
 
 #define SERIAL_ACK 'y'
 #define SERIAL_NAK 'n'

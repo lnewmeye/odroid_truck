@@ -13,6 +13,7 @@
 #include <iostream>
 
 //#define DEBUG
+#define SERIAL_USE_FILE
 
 class Truck {
 	//methods

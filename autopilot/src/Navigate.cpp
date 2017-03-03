@@ -44,21 +44,31 @@ using std::endl;
 using std::string;
 using namespace cv;
 
-typedef enum EDGE_TYPE_E {
-	EDGE_TYPE_EDGE = 0,
-	EDGE_TYPE_OBJECT,
-	EDGE_TYPE_IMG
-} EDGE_TYPE_T;
-
 /*************************** Implementation **********************************/
 
-Navigate::Navigate( void )
+void Navigate::analyze_frame(Mat frame)
 {
-	namedWindow("main", CV_WINDOW_KEEPRATIO);
-	cout << "Creating Navigate Object!" << endl;
-	p_bailCnt = 0;
+	// Run initial processing on frame
+	get_obstacles(frame);
+	get_edges(frame);
+	
+	switch(drive_state) {
+		case DRIVE_FOLLOW_INNER:
+			break;
+
+		case DRIVE_AVOID_INNER:
+			break;
+
+		case DRIVE_FOLLOW_OUTTER:
+			break;
+
+		case DRIVE_AVOID_OUTTER:
+			break;
+
+	}
 }
 
+/*
 void Navigate::analyze_frame(cv::Mat frame)
 {
 	switch (p_navState) {
@@ -101,10 +111,12 @@ void Navigate::analyze_frame(cv::Mat frame)
 		break;
 	}
 }
+*/
 
 //Notes:
 //Wheel base:	1/6 width from edge of frame at bottom (1/8)
 //				1/6 width of frame at top of frame (1/5)
+/*
 void Navigate::analyze_forward(cv::Mat frame)
 {
 	//convert frame to HSV Color Space
@@ -392,7 +404,9 @@ void Navigate::analyze_forward(cv::Mat frame)
 	//show debug image
 	imshow("main", p_debugImg);
 }
-	
+*/
+
+/*
 void Navigate::analyze_bail(cv::Mat frame)
 {
 
@@ -553,12 +567,14 @@ void Navigate::analyze_bail(cv::Mat frame)
 	break;
 	}
 }
+*/
 
 //Wheel base:	1/6 width from edge of frame at bottom (1/8)
 //				1/6 width of frame at top of frame (1/5)
 // 3/4 image width at bottom
 // 1/5 image width at top
 // image 160x90
+/*
 int Navigate::get_min_dist(int y)
 {
 	int topW = (160 / 6);
@@ -569,7 +585,9 @@ int Navigate::get_min_dist(int y)
 
 	return (dist);
 }
-void Navigate::get_obstacles(cv::Mat hsvImg, cv::Mat *frameObstacles)
+*/
+
+void Navigate::get_obstacles(cv::Mat frame)
 {
 	//get obstacles in image (orange)
 	int satMin = 175;
@@ -578,11 +596,16 @@ void Navigate::get_obstacles(cv::Mat hsvImg, cv::Mat *frameObstacles)
 	int hueMax = hueCenter + 8;
 	int valMin = 60;
 	int valMax = 255;
-	inRange(hsvImg, Scalar(hueMin, satMin, valMin), Scalar(hueMax, 255, valMax), *frameObstacles);
-	//imshow( "obstacles", frameObstacles );
+
+	// Define minimum and maximums
+	Scalar minimum = Scalar(hueMin, satMin, valMin);
+	Scalar maximum = Scalar(hueMax, 255, valMax);
+
+	// select image range
+	cv::inRange(frame, minimum, maximum, obstacles_frame);
 }
 
-void Navigate::get_edges(cv::Mat hsvImg, cv::Mat *frameEdges)
+void Navigate::get_edges(cv::Mat frame)
 {
 	//get course edges (blue)
 	int satMin = 100;
@@ -591,6 +614,11 @@ void Navigate::get_edges(cv::Mat hsvImg, cv::Mat *frameEdges)
 	int hueMax = hueCenter + 14;
 	int valMin = 50;
 	int valMax = 255;
-	inRange(hsvImg, Scalar(hueMin, satMin, valMin), Scalar(hueMax, 255, valMax), *frameEdges);
-	//imshow( "edges", frameEdges );
+
+	// Define minimum and maximums
+	Scalar minimum = Scalar(hueMin, satMin, valMin);
+	Scalar maximum = Scalar(hueMax, 255, valMax);
+
+	// Select image range
+	cv::inRange(frame, minimum, maximum, edges_frame);
 }
