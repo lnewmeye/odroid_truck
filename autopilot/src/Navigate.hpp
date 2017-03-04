@@ -17,11 +17,25 @@
 #define EDGE_VALUE_MIN 70
 #define EDGE_DILATION 5
 
-// Parameters for obstacles
-#define CONES_HUE 8
-#define CONES_RANGE 8
-#define CONES_SATURATION_MIN 70
-#define CONES_VALUE_MIN 70
+// Parameters for cones
+#define CONES_HUE 10
+#define CONES_RANGE 10
+#define CONES_SATURATION_MIN 220
+#define CONES_VALUE_MIN 170
+#define CONE_MIN_AREA 20
+
+// Parameters for left, front, and right regions
+#define FRAME_WIDTH 160
+#define FRAME_HEIGHT 80
+#define FRONT_LEFT_X1 FRAME_WIDTH / 3
+#define FRONT_LEFT_Y1 FRAME_HEIGHT
+#define FRONT_LEFT_X2 FRAME_WIDTH / 2
+#define FRONT_LEFT_Y2 0
+#define FRONT_RIGHT_X1 2*FRAME_WIDTH / 3
+#define FRONT_RIGHT_Y1 FRAME_HEIGHT
+#define FRONT_RIGHT_X2 FRONT_LEFT_X2
+#define FRONT_RIGHT_Y2 FRONT_RIGHT_Y2
+#define FRONT_DISTANCE FRAME_HEIGHT / 3
 
 // Parameters for truck location
 #define TRUCK_DEFAULT_RIGHT
@@ -42,11 +56,20 @@ typedef enum NAVIGATE_STATE {
 
 typedef struct Edge {
 	bool exists;
-	double left;
-	double top;
-	double width;
-	double height;
+	int left;
+	int top;
+	int width;
+	int height;
 } Edge;
+
+typedef struct Cone {
+	int centroid_x;
+	int centroid_y;
+	int box_left;
+	int box_top;
+	int box_width;
+	int box_height;
+} Cone;
 
 class Navigate {
 
@@ -61,17 +84,19 @@ public:
 	cv::Mat getEdges() {return edges_frame;}
 	cv::Mat getCones() {return cones_frame;}
 	cv::Mat getComposite() {return edges_frame+cones_frame;}
+	void getNavigation(cv::Mat input, cv::Mat& output);
 
 private:
 	// Private variables
-	NAVIGATE_STATE navigate_state = NAVIGATE_FOLLOW_INNER;
+	NAVIGATE_STATE navigate_state = NAVIGATE_FOLLOW_OUTER;
 	cv::Mat edges_frame;
 	cv::Mat cones_frame;
 	Edge inner_edge;
 	Edge outer_edge;
-	bool cone_front = false;
-	bool cone_left = false;
-	bool cone_right = false;
+	std::vector<Cone> left_cones;
+	std::vector<Cone> front_cones;
+	std::vector<Cone> right_cones;
+	std::vector<Cone> other_cones;
 	int outer_count = 0;
 
 	// Priave functions

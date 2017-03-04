@@ -38,8 +38,8 @@ typedef enum MAIN_STATE_E {
 typedef enum AUTO_STATE {
 	AUTO_STATE_EDGES,
 	AUTO_STATE_OBSTACLES,
-	AUTO_STATE_COMPOSITE,
-	AUTO_STATE_VIDEO
+	AUTO_STATE_VIDEO,
+	AUTO_STATE_NAVIGATION
 } AUTO_STATE;
 
 using std::cout;
@@ -271,17 +271,14 @@ static void main_auto_drive( void )
 				cout << "Displaying obstacles" << endl;
 				break;
 
-			case 'c':
-				auto_state = AUTO_STATE_COMPOSITE;
-				cout << "Displaying composite" << endl;
-				break;
-
 			case 'v':
 				auto_state = AUTO_STATE_VIDEO;
 				cout << "Displaying video" << endl;
 				break;
 
-			default:
+			case 'n':
+				auto_state = AUTO_STATE_NAVIGATION;
+				cout << "Displaying navigation" << endl;
 				break;
 		}
 
@@ -292,19 +289,15 @@ static void main_auto_drive( void )
 				break;
 
 			case AUTO_STATE_OBSTACLES:
-				display = m_nav.getObstacles();
+				display = m_nav.getCones();
 				break;
 
-			case AUTO_STATE_COMPOSITE:
-				display = m_nav.getComposite();
-				break;
-				
 			case AUTO_STATE_VIDEO:
 				display = frame;
 				break;
 
-			default:
-				display = frame;
+			case AUTO_STATE_NAVIGATION:
+				m_nav.getNavigation(frame, display);
 				break;
 		}
 

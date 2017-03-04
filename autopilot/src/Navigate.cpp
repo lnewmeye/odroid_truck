@@ -48,6 +48,7 @@ using std::vector;
 using cv::Mat;
 using cv::Size;
 using cv::Scalar;
+using cv::Point;
 
 /*************************** Implementation **********************************/
 
@@ -58,7 +59,9 @@ void Navigate::navigateFrame(Mat frame)
 	processCones(frame);
 
 	// Find cone positions
-	
+	bool cone_left = !left_cones.empty();
+	bool cone_front = !front_cones.empty();
+	bool cone_right = !right_cones.empty();
 
 	// Update state according to positions
 	switch(navigate_state) {
@@ -85,22 +88,26 @@ void Navigate::navigateFrame(Mat frame)
 			break;
 
 		case NAVIGATE_AVOID_INNER:
-			if(!cone_left)
+			if(!cone_left && !cone_front)
 				navigate_state = NAVIGATE_FOLLOW_INNER;
+			if(cone_left && cone_front)
+				navigate_state = NAVIGATE_REVERSE_INNER;
 			break;
 
 		case NAVIGATE_AVOID_OUTER:
-			if(!cone_right)
+			if(!cone_right && !cone_front)
 				navigate_state = NAVIGATE_FOLLOW_OUTER;
+			if(cone_right && cone_front)
+				navigate_state = NAVIGATE_REVERSE_OUTER;
 			break;
 
 		case NAVIGATE_REVERSE_INNER:
-			if(!cone_left)
+			if(!cone_right)
 				navigate_state = NAVIGATE_FOLLOW_OUTER;
 			break;
 
 		case NAVIGATE_REVERSE_OUTER:
-			if(!cone_right)
+			if(!cone_left)
 				navigate_state = NAVIGATE_FOLLOW_INNER;
 			break;
 	}
@@ -172,14 +179,14 @@ void Navigate::processEdges(cv::Mat frame)
 
 	// Find left and right edges from connected components
 	vector<int> inner_index, outer_index;
-	double centroid_x;
+	int centroid_x;
 	for(int i = 1; i < edges_centroids.rows; i++) {
-		centroid_x = edges_centroids.at<double>(i,0);
+		centroid_x = (int)edges_centroids.at<double>(i,0);
 
 		// TODO: Adjust this statement to account for reverse direction
 		// This assumes that we are driving in a counter clockwise circle
 		// and that the outer edge is on the right side of the image
-		if(centroid_x > frame.rows/2)
+		if(centroid_x > frame.cols/2)
 			outer_index.push_back(i);
 		else
 			inner_index.push_back(i);
@@ -187,27 +194,27 @@ void Navigate::processEdges(cv::Mat frame)
 
 	// Choose best component for inner object
 	inner_edge.exists = false; // Reset data strucutre (in case no inner)
-	double inner_area = 0;
+	int inner_area = 0;
 	for(int index : inner_index) {
-		if(inner_area < edges_stats.at<double>(index,cv::CC_STAT_AREA)) {
+		if(inner_area < edges_stats.at<int>(index,cv::CC_STAT_AREA)) {
 			inner_edge.exists = true;
-			inner_edge.left = edges_stats.at<double>(index,cv::CC_STAT_LEFT);
-			inner_edge.top = edges_stats.at<double>(index,cv::CC_STAT_TOP);
-			inner_edge.width = edges_stats.at<double>(index,cv::CC_STAT_WIDTH);
-			inner_edge.height = edges_stats.at<double>(index,cv::CC_STAT_HEIGHT);
+			inner_edge.left = edges_stats.at<int>(index,cv::CC_STAT_LEFT);
+			inner_edge.top = edges_stats.at<int>(index,cv::CC_STAT_TOP);
+			inner_edge.width = edges_stats.at<int>(index,cv::CC_STAT_WIDTH);
+			inner_edge.height = edges_stats.at<int>(index,cv::CC_STAT_HEIGHT);
 		}
 	}
 
 	// Choose best component for outer object
 	outer_edge.exists = false; // Reset data structure (in case no outer)
-	double outer_area = 0;
+	int outer_area = 0;
 	for(int index : outer_index) {
-		if(outer_area < edges_stats.at<double>(index,cv::CC_STAT_AREA)) {
+		if(outer_area < edges_stats.at<int>(index,cv::CC_STAT_AREA)) {
 			outer_edge.exists = true;
-			outer_edge.left = edges_stats.at<double>(index,cv::CC_STAT_LEFT);
-			outer_edge.top = edges_stats.at<double>(index,cv::CC_STAT_TOP);
-			outer_edge.width = edges_stats.at<double>(index,cv::CC_STAT_WIDTH);
-			outer_edge.height = edges_stats.at<double>(index,cv::CC_STAT_HEIGHT);
+			outer_edge.left = edges_stats.at<int>(index,cv::CC_STAT_LEFT);
+			outer_edge.top = edges_stats.at<int>(index,cv::CC_STAT_TOP);
+			outer_edge.width = edges_stats.at<int>(index,cv::CC_STAT_WIDTH);
+			outer_edge.height = edges_stats.at<int>(index,cv::CC_STAT_HEIGHT);
 		}
 	}
 }
@@ -232,6 +239,133 @@ void Navigate::processCones(cv::Mat frame)
 
 	// select image range
 	cv::inRange(frame_hsv, minimum, maximum, cones_frame);
+
+	// Dilate image slightly (erode instead?)
+	// TODO: implement this step
+	
+	// Identify cones using conneted components
+	Mat cones_label, cones_stats, cones_centroids;
+	cv::connectedComponentsWithStats(cones_frame, cones_label, cones_stats,
+			cones_centroids);
+	
+	// Select significant objects (ignore small masses)
+	
+	// TODO: adjust to examine images. For now centroids will do.
+	// Ideally we want to identify when part of the image crosses over.
+	
+	// Clear all cones from previous images
+	left_cones.clear();
+	front_cones.clear();
+	right_cones.clear();
+	other_cones.clear();
+
+	// Find centroids that fall in regions left, center, and right
+	for(int i = 1; i < cones_centroids.rows; i++) {
+
+		// Ignore if under minimum size
+		if(cones_stats.at<int>(i,cv::CC_STAT_AREA) < CONE_MIN_AREA)
+			break;
+
+		// Set attributes of new cone
+		Cone new_cone;
+		double centroid_x = cones_centroids.at<double>(i,0);
+		double centroid_y = cones_centroids.at<double>(i,1);
+		new_cone.centroid_x = (int)centroid_x;
+		new_cone.centroid_y = (int)centroid_y;
+		new_cone.box_left = cones_stats.at<int>(i,cv::CC_STAT_LEFT);
+		new_cone.box_top = cones_stats.at<int>(i,cv::CC_STAT_TOP);
+		new_cone.box_width = cones_stats.at<int>(i,cv::CC_STAT_WIDTH);
+		new_cone.box_height = cones_stats.at<int>(i,cv::CC_STAT_HEIGHT);
+		
+		// Check cone region and push to respective vector
+		if(centroid_y < frame.rows/10.0)
+			other_cones.push_back(new_cone);
+		else if(centroid_x < frame.cols/6.0)
+			other_cones.push_back(new_cone);
+		else if(centroid_x < frame.cols/3.0)
+			left_cones.push_back(new_cone);
+		else if(centroid_x < 2*frame.cols/3.0)
+			front_cones.push_back(new_cone);
+		else if(centroid_x < 5*frame.cols/6.0)
+			right_cones.push_back(new_cone);
+		else
+			other_cones.push_back(new_cone);
+	}
+}
+
+void Navigate::getNavigation(Mat input, Mat& output)
+{
+	// Clone input image
+	output = input.clone();
+	
+	// Draw edge lines
+	Scalar line_color = Scalar(255, 255, 255);
+	if(inner_edge.exists) {
+		Point start = Point(inner_edge.left, inner_edge.top + 
+				inner_edge.height);
+		Point end = Point(inner_edge.left + inner_edge.width, 
+				inner_edge.top);
+		cv::line(output, start, end, line_color);
+	}
+	if(outer_edge.exists) {
+		Point start = Point(outer_edge.left, outer_edge.top);
+		Point end = Point(outer_edge.left + outer_edge.width,
+				outer_edge.top + outer_edge.height);
+		cv::line(output, start, end, line_color);
+	}
+
+	// Draw cone centroids
+	Scalar point_color = Scalar(255, 0, 0);
+	for(Cone cone : left_cones) {
+		Point centroid = Point(cone.centroid_x, cone.centroid_y);
+		cv::circle(output, centroid, 3, point_color);
+	}
+	point_color = Scalar(0, 255, 0);
+	for(Cone cone : front_cones) {
+		Point centroid = Point(cone.centroid_x, cone.centroid_y);
+		cv::circle(output, centroid, 3, point_color);
+	}
+	point_color = Scalar(0, 0, 255);
+	for(Cone cone : right_cones) {
+		Point centroid = Point(cone.centroid_x, cone.centroid_y);
+		cv::circle(output, centroid, 3, point_color);
+	}
+	point_color = Scalar(0, 0, 0);
+	for(Cone cone : other_cones) {
+		Point centroid = Point(cone.centroid_x, cone.centroid_y);
+		cv::circle(output, centroid, 3, point_color);
+	}
+
+	// Write state on figure
+	string state;
+	switch(navigate_state) {
+		case(NAVIGATE_FOLLOW_INNER):
+			state = "Follow Inner";
+			break;
+
+		case (NAVIGATE_FOLLOW_OUTER):
+			state = "Follow Outer";
+			break;
+
+		case(NAVIGATE_AVOID_INNER):
+			state = "Avoid Inner";
+			break;
+
+		case(NAVIGATE_AVOID_OUTER):
+			state = "Avoid Outer";
+			break;
+
+		case(NAVIGATE_REVERSE_INNER):
+			state = "Reverse Inner";
+			break;
+
+		case(NAVIGATE_REVERSE_OUTER):
+			state = "Reverse Outer";
+			break;
+	}
+	Point origin = Point(10, 80);
+	Scalar font_color = Scalar(255, 0, 0);
+	cv::putText(output, state, origin, 1, 1, font_color);
 }
 
 void Navigate::followInner()
